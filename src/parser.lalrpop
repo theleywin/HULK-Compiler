@@ -1,35 +1,63 @@
 use std::str::FromStr;
 
-
-use crate::ast::{Expr};
+use crate::ast::Expr;
 use crate::tokens::*;
 
 grammar;
 
-
 pub ExprsList: Vec<Box<Expr>> = {
-    <mut v:(<Expr> ";")*> <e:Expr?> => match e {
-        None => v,
-        Some(e) => {
-            v.push(e);
-            v
-        }
+    <v:(<Expr> Semicolon)*> => v
+};
+
+Expr: Box<Expr> = { EqualityExpr };
+
+EqualityExpr: Box<Expr> = {
+    <left:ComparisonExpr> <rest:(EqualityOp ComparisonExpr)*> => {
+        rest.into_iter().fold(left, |l, (op, r)| {
+            Box::new(Expr::BinaryOp(l, op, r))
+        })
     }
 };
 
-Expr: Box<Expr> = {
-    Expr ExprOp Factor => Box::new(Expr::BinaryOp(<>)),
-    Factor,
+EqualityOp: OperatorToken = {
+    "==" => OperatorToken::EQ,
+    "!=" => OperatorToken::NEQ,
 };
 
-ExprOp: OperatorToken = {
+ComparisonExpr: Box<Expr> = {
+    <left:TermExpr> <rest:(ComparisonOp TermExpr)*> => {
+        rest.into_iter().fold(left, |l, (op, r)| {
+            Box::new(Expr::BinaryOp(l, op, r))
+        })
+    }
+};
+
+ComparisonOp: OperatorToken = {
+    ">" => OperatorToken::GT,
+    ">=" => OperatorToken::GTE,
+    "<" => OperatorToken::LT,
+    "<=" => OperatorToken::LTE,
+};
+
+TermExpr: Box<Expr> = {
+    <left:FactorExpr> <rest:(TermOp FactorExpr)*> => {
+        rest.into_iter().fold(left, |l, (op, r)| {
+            Box::new(Expr::BinaryOp(l, op, r))
+        })
+    }
+};
+
+TermOp: OperatorToken = {
     "+" => OperatorToken::PLUS,
     "-" => OperatorToken::MINUS,
 };
 
-Factor: Box<Expr> = {
-    Factor FactorOp Term => Box::new(Expr::BinaryOp(<>)),
-    Term,
+FactorExpr: Box<Expr> = {
+    <left:ExponentExpr> <rest:(FactorOp ExponentExpr)*> => {
+        rest.into_iter().fold(left, |l, (op, r)| {
+            Box::new(Expr::BinaryOp(l, op, r))
+        })
+    }
 };
 
 FactorOp: OperatorToken = {
@@ -38,73 +66,88 @@ FactorOp: OperatorToken = {
     "%" => OperatorToken::MOD,
 };
 
+ExponentExpr: Box<Expr> = {
+    <left:UnaryExpr> <op:PowOp> <right:ExponentExpr> => Box::new(Expr::BinaryOp(left, op, right)),
+    UnaryExpr,
+};
+
 PowOp: OperatorToken = {
     "^" => OperatorToken::POW,
 };
 
-
-Term: Box<Expr> = {
-    Primary PowOp Term => Box::new(Expr::BinaryOp(<>)),
-    Primary,
+UnaryExpr: Box<Expr> = {
+    <op:UnaryOp> <expr:UnaryExpr> => Box::new(Expr::UnaryOp(op, expr)),
+    PrimaryExpr,
 };
 
-Primary: Box<Expr> = {
+UnaryOp: OperatorToken = {
+    "!" => OperatorToken::NOT,
+    "-" => OperatorToken::NEG,
+};
+
+PrimaryExpr: Box<Expr> = {
     Num => Box::new(Expr::Number(<>)),
-    LParen <Expr> RParen,
+    LParen <Expr> RParen => Box::new(*<>),
+    PrintExpr,
 };
 
 PrintExpr: Box<Expr> = {
-    Print LParen <Expr> RParen => Box::new(Expr::Print(<>)), //Current work
+    Print LParen <Expr> RParen => Box::new(Expr::Print(<>)),
+};
+
+Semicolon: DelimiterToken = {
+    ";" => DelimiterToken::SEMICOLON,
 };
 
 RParen: DelimiterToken = {
-    ")" => DelimiterToken::RPAREN
+    ")" => DelimiterToken::RPAREN,
 };
 
 LParen: DelimiterToken = {
-    "(" => DelimiterToken::LPAREN
+    "(" => DelimiterToken::LPAREN,
 };
 
 RBrace: DelimiterToken = {
-    "}" => DelimiterToken::RBRACE
+    "}" => DelimiterToken::RBRACE,
 };
 
 LBrace: DelimiterToken = {
-    "{" => DelimiterToken::LBRACE
+    "{" => DelimiterToken::LBRACE,
 };
 
 Let: KeywordToken = {
-    "let" => KeywordToken::LET
-}
+    "let" => KeywordToken::LET,
+};
 
 Else: KeywordToken = {
-    "else" => KeywordToken::ELSE
-}
+    "else" => KeywordToken::ELSE,
+};
 
 Elif: KeywordToken = {
-    "elif" => KeywordToken::ELIF
-}
+    "elif" => KeywordToken::ELIF,
+};
 
 In: KeywordToken = {
-    "in" => KeywordToken::IN
-}
+    "in" => KeywordToken::IN,
+};
 
 If: KeywordToken = {
-    "if" => KeywordToken::IF
-}
+    "if" => KeywordToken::IF,
+};
 
 While: KeywordToken = {
-    "while" => KeywordToken::WHILE
-}
+    "while" => KeywordToken::WHILE,
+};
 
 Print: KeywordToken = {
-    "print" => KeywordToken::PRINT
+    "print" => KeywordToken::PRINT,
 };
 
 Id: String = {
-    r"[A-Za-z][A-Za-z_0-9]*" => String::from_str(<>).unwrap()
+    r"[A-Za-z][A-Za-z_0-9]*" => String::from_str(<>).unwrap(),
 };
 
 Num: i32 = {
-    r"[0-9]+(\.[0-9]+)?" => i32::from_str(<>).unwrap()
+    r"[0-9]+(\.[0-9]+)?" => i32::from_str(<>).unwrap(),
 };
+
