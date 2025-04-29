@@ -5,7 +5,7 @@ mod tokens;
 lalrpop_mod!(pub parser);
 
 fn main() {
-    let input = "5 * 3 + (2 - 1) / 4 ; 4 * 4 + 2";
+    let input = "4*2/5+(1^2^3^4)-34";
     
     let expr = parser::ExprsListParser::new()
             .parse(input)

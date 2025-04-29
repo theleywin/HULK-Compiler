@@ -1,4 +1,3 @@
-
 #[derive(Debug, PartialEq)]
 pub enum KeywordToken {
     PRINT,
@@ -9,6 +8,7 @@ pub enum KeywordToken {
     IN,
     LET,
 }
+
 #[derive(Debug, PartialEq)]
 pub enum OperatorToken {
     MUL,
@@ -16,7 +16,9 @@ pub enum OperatorToken {
     PLUS,
     MINUS,
     MOD,
+    POW,
 }
+
 #[derive(Debug, PartialEq)]
 pub enum DelimiterToken {
     SEMICOLON,
@@ -26,10 +28,12 @@ pub enum DelimiterToken {
     LBRACE,
     RBRACE,
 }
+
 #[derive(Debug, PartialEq)]
 pub enum IdentifierToken {
     IDENTIFIER(String),
 }
+
 #[derive(Debug, PartialEq)]
 pub enum Token {
     Keyword(KeywordToken),

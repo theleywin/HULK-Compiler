@@ -38,10 +38,19 @@ FactorOp: OperatorToken = {
     "%" => OperatorToken::MOD,
 };
 
+PowOp: OperatorToken = {
+    "^" => OperatorToken::POW,
+};
+
 
 Term: Box<Expr> = {
+    Primary PowOp Term => Box::new(Expr::BinaryOp(<>)),
+    Primary,
+};
+
+Primary: Box<Expr> = {
     Num => Box::new(Expr::Number(<>)),
-    LParen <Expr> RParen
+    LParen <Expr> RParen,
 };
 
 PrintExpr: Box<Expr> = {
@@ -67,7 +76,6 @@ LBrace: DelimiterToken = {
 Let: KeywordToken = {
     "let" => KeywordToken::LET
 }
-
 
 Else: KeywordToken = {
     "else" => KeywordToken::ELSE
