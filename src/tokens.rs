@@ -7,6 +7,8 @@ pub enum KeywordToken {
     IF,
     IN,
     LET,
+    TRUE,
+    FALSE,
 }
 
 #[derive(Debug, PartialEq)]
