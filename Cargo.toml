@@ -1,0 +1,12 @@
+[package]
+name = "hulk_compiler"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[dependencies]
+lalrpop = "0.22.1"
+lalrpop-util = "0.22.1"
+
+[build-dependencies]
+lalrpop = "0.22.1"

@@ -1,0 +1,102 @@
+use std::str::FromStr;
+
+
+use crate::ast::{Expr};
+use crate::tokens::*;
+
+grammar;
+
+
+pub ExprsList: Vec<Box<Expr>> = {
+    <mut v:(<Expr> ";")*> <e:Expr?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};
+
+Expr: Box<Expr> = {
+    Expr ExprOp Factor => Box::new(Expr::BinaryOp(<>)),
+    Factor,
+};
+
+ExprOp: OperatorToken = {
+    "+" => OperatorToken::PLUS,
+    "-" => OperatorToken::MINUS,
+};
+
+Factor: Box<Expr> = {
+    Factor FactorOp Term => Box::new(Expr::BinaryOp(<>)),
+    Term,
+};
+
+FactorOp: OperatorToken = {
+    "*" => OperatorToken::MUL,
+    "/" => OperatorToken::DIV,
+    "%" => OperatorToken::MOD,
+};
+
+
+Term: Box<Expr> = {
+    Num => Box::new(Expr::Number(<>)),
+    LParen <Expr> RParen
+};
+
+PrintExpr: Box<Expr> = {
+    Print LParen <Expr> RParen => Box::new(Expr::Print(<>)), //Current work
+};
+
+RParen: DelimiterToken = {
+    ")" => DelimiterToken::RPAREN
+};
+
+LParen: DelimiterToken = {
+    "(" => DelimiterToken::LPAREN
+};
+
+RBrace: DelimiterToken = {
+    "}" => DelimiterToken::RBRACE
+};
+
+LBrace: DelimiterToken = {
+    "{" => DelimiterToken::LBRACE
+};
+
+Let: KeywordToken = {
+    "let" => KeywordToken::LET
+}
+
+
+Else: KeywordToken = {
+    "else" => KeywordToken::ELSE
+}
+
+Elif: KeywordToken = {
+    "elif" => KeywordToken::ELIF
+}
+
+In: KeywordToken = {
+    "in" => KeywordToken::IN
+}
+
+If: KeywordToken = {
+    "if" => KeywordToken::IF
+}
+
+While: KeywordToken = {
+    "while" => KeywordToken::WHILE
+}
+
+Print: KeywordToken = {
+    "print" => KeywordToken::PRINT
+};
+
+Id: String = {
+    r"[A-Za-z][A-Za-z_0-9]*" => String::from_str(<>).unwrap()
+};
+
+Num: i32 = {
+    r"[0-9]+(\.[0-9]+)?" => i32::from_str(<>).unwrap()
+};
