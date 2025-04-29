@@ -17,6 +17,14 @@ pub enum OperatorToken {
     MINUS,
     MOD,
     POW,
+    NEG,
+    NOT,
+    EQ,
+    NEQ,
+    GT,
+    GTE,
+    LT,
+    LTE,
 }
 
 #[derive(Debug, PartialEq)]
