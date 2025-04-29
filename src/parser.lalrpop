@@ -87,8 +87,12 @@ UnaryOp: OperatorToken = {
 
 PrimaryExpr: Box<Expr> = {
     Num => Box::new(Expr::Number(<>)),
+    Str => Box::new(Expr::Str(<>)),
+    Identifier => Box::new(Expr::Identifier(<>)),
     LParen <Expr> RParen => Box::new(*<>),
     PrintExpr,
+    True => Box::new(Expr::Boolean(true)),
+    False => Box::new(Expr::Boolean(false)),
 };
 
 PrintExpr: Box<Expr> = {
@@ -143,7 +147,15 @@ Print: KeywordToken = {
     "print" => KeywordToken::PRINT,
 };
 
-Id: String = {
+True: KeywordToken = {
+    "true" => KeywordToken::TRUE,
+};
+
+False: KeywordToken = {
+    "false" => KeywordToken::FALSE,
+};
+
+Identifier: String = {
     r"[A-Za-z][A-Za-z_0-9]*" => String::from_str(<>).unwrap(),
 };
 
@@ -151,3 +163,6 @@ Num: i32 = {
     r"[0-9]+(\.[0-9]+)?" => i32::from_str(<>).unwrap(),
 };
 
+Str: String = {
+    r#""([^"\\]|\\.)*""# => String::from_str(&<>[1..<>.len()-1]).unwrap(),
+};

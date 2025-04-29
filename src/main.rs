@@ -5,7 +5,7 @@ mod tokens;
 lalrpop_mod!(pub parser);
 
 fn main() {
-    let input = "-1 + 5;";
+    let input = "kosaraju;";
     
     let expr = parser::ExprsListParser::new()
             .parse(input)
