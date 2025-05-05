@@ -1,12 +1,24 @@
 use std::str::FromStr;
 
+use crate::ast::Program;
+use crate::ast::FunctionDef;
 use crate::ast::Expr;
 use crate::tokens::*;
 
 grammar;
 
-pub ExprsList: Vec<Box<Expr>> = {
-    <v:(<Expr> Semicolon)*> => v
+pub Program: Program = {
+    <functions:FunctionDef*> <main:ExprsList> => Program { functions, main }
+};
+
+ExprsList: Vec<Box<Expr>> = {
+    <v:(<Expr> Semicolon)*> <last:Expr?> => {
+        let mut vec = v;
+        if let Some(e) = last {
+            vec.push(e);
+        }
+        vec
+    }
 };
 
 Expr: Box<Expr> = { EqualityExpr };
@@ -16,6 +28,34 @@ EqualityExpr: Box<Expr> = {
         rest.into_iter().fold(left, |l, (op, r)| {
             Box::new(Expr::BinaryOp(l, op, r))
         })
+    }
+};
+
+Function: KeywordToken = {
+    "function" => KeywordToken::FUNCTION,
+};
+
+Arrow: DelimiterToken = {
+    "=>" => DelimiterToken::ARROW,
+};
+
+IdentifierList: Vec<String> = {
+    <first:Identifier> <rest:(Comma Identifier)*> => {
+        let mut vec = vec![first];
+        for (_, id) in rest {
+            vec.push(id);
+        }
+        vec
+    }
+};
+
+FunctionDef: FunctionDef = {
+    Function <name:Identifier> LParen <params:IdentifierList> RParen Arrow <body:Expr> Semicolon => {
+        FunctionDef {
+            name,
+            params,
+            body,
+        }
     }
 };
 
@@ -86,6 +126,7 @@ UnaryOp: OperatorToken = {
 };
 
 PrimaryExpr: Box<Expr> = {
+    <name:Identifier> LParen <args:ArgList> RParen => Box::new(Expr::FunctionCall(name, args)),
     Num => Box::new(Expr::Number(<>)),
     Str => Box::new(Expr::Str(<>)),
     Identifier => Box::new(Expr::Identifier(<>)),
@@ -95,8 +136,25 @@ PrimaryExpr: Box<Expr> = {
     False => Box::new(Expr::Boolean(false)),
 };
 
+ArgList: Vec<Box<Expr>> = {
+    // Handle non-empty arguments
+    <first:Expr> <rest:(<Comma> <Expr>)*> => {
+        let mut args = vec![first];
+        for (_, expr) in rest {
+            args.push(expr);
+        }
+        args
+    },
+    // Handle empty arguments (no parameters)
+    => Vec::new()
+};
+
 PrintExpr: Box<Expr> = {
     Print LParen <Expr> RParen => Box::new(Expr::Print(<>)),
+};
+
+Comma: DelimiterToken = {
+    "," => DelimiterToken::COMMA,
 };
 
 Semicolon: DelimiterToken = {
@@ -159,8 +217,8 @@ Identifier: String = {
     r"[A-Za-z][A-Za-z_0-9]*" => String::from_str(<>).unwrap(),
 };
 
-Num: i32 = {
-    r"[0-9]+(\.[0-9]+)?" => i32::from_str(<>).unwrap(),
+Num: f64 = {
+    r"[0-9]+(\.[0-9]+)?" => f64::from_str(<>).unwrap(),
 };
 
 Str: String = {

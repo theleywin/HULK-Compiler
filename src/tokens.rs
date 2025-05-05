@@ -9,6 +9,7 @@ pub enum KeywordToken {
     LET,
     TRUE,
     FALSE,
+    FUNCTION,
 }
 
 #[derive(Debug, PartialEq)]
@@ -37,18 +38,5 @@ pub enum DelimiterToken {
     RPAREN,
     LBRACE,
     RBRACE,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum IdentifierToken {
-    IDENTIFIER(String),
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Token {
-    Keyword(KeywordToken),
-    Operator(OperatorToken),
-    Delimiter(DelimiterToken),
-    Identifier(IdentifierToken),
-    EOF,
+    ARROW,
 }
