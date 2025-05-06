@@ -28,6 +28,7 @@ pub enum OperatorToken {
     GTE,
     LT,
     LTE,
+    ASSIGN,
 }
 
 #[derive(Debug, PartialEq)]
