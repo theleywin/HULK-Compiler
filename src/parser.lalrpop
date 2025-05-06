@@ -1,25 +1,31 @@
 use std::str::FromStr;
 
 use crate::ast::FunctionDef;
-//use crate::ast::FuncDef;
+use crate::ast::FuncDef;
 use crate::ast::Expr;
-//use crate::ast::Statement;
-//use crate::ast::Program;
+use crate::ast::Statement;
+use crate::ast::Program;
 use crate::tokens::*;
 
 grammar;
 
-// Program: Program = {
-//     <v:(<Statement> Semicolon)*> <last:Statement?> => {
-//         let mut vec = v;
-//         if let Some(e) = last {
-//             vec.push(e);
-//         }
-//         vec
-//     }
-// }
+pub Program: Program = {
+    <v:(<Statement> Semicolon)*> <last:Statement?> => {
+        let mut vec = v;
+        if let Some(e) = last {
+            vec.push(e);
+        }
+        Program{statements:vec,}
+    }
+}
 
-pub ExprsList: Vec<Box<Expr>> = {
+Statement: Box<Statement> = {
+    FunctionFullDef => Box::new(Statement::FunctionDef(FuncDef::FunctionFullDef(<>))),
+    FunctionArrowDef => Box::new(Statement::FunctionDef(FuncDef::FunctionArrowDef(<>))),
+    Expr => Box::new(Statement::Expression(<>))
+}
+
+ExprsList: Vec<Box<Expr>> = {
     <v:(<Expr> Semicolon)*> <last:Expr?> => {
         let mut vec = v;
         if let Some(e) = last {
@@ -29,10 +35,7 @@ pub ExprsList: Vec<Box<Expr>> = {
     }
 };
 
-
 Expr: Box<Expr> = { 
-    FunctionFullDef => Box::new(Expr::FunctionFullDef(<>)),//TODO quitar de aqui
-    FunctionArrowDef => Box::new(Expr::FunctionArrowDef(<>)),
     Assignment,
     EqualityExpr,
 };
@@ -190,6 +193,7 @@ PrimaryExpr: Box<Expr> = {
     True => Box::new(Expr::Boolean(true)),
     False => Box::new(Expr::Boolean(false)),
     CodeBlock,
+    IfElse,
 };
 
 ArgList: Vec<Box<Expr>> = {
@@ -210,7 +214,7 @@ WhileLoop: Box<Expr> = {
 };
 
 IfElse: Box<Expr> = {
-    If LParen <condition:Expr> RParen <if_body:Expr> Else <else_body:Expr> => {
+    If LParen <condition:Expr> RParen <if_body:PrimaryExpr> Else <else_body:PrimaryExpr> => {
         Box::new(Expr::IfElse(condition, if_body, else_body))
     },
 }

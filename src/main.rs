@@ -5,9 +5,9 @@ mod tokens;
 lalrpop_mod!(pub parser);
 
 fn main() {
-    let input = "let x = 5 , y = 4 in print(x + y);";    
+    let input = "";    
     
-    let expr = parser::ExprsListParser::new()
+    let expr = parser::ProgramParser::new()
             .parse(input)
             .unwrap();
     println!("{:?}", expr);

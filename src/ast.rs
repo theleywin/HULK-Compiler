@@ -1,15 +1,15 @@
 use crate::tokens::*;
 
-//#[derive(Debug, PartialEq)]
-// pub struct Program{
-//     pub statements: Vec<Box<Statement>>,
-// }
+#[derive(Debug, PartialEq)]
+pub struct Program{
+    pub statements: Vec<Box<Statement>>,
+}
 
-//#[derive(Debug, PartialEq)]
-// pub enum Statement {
-//     Expression(Expr),
-//     FunctionDef(FuncDef),
-// }
+#[derive(Debug, PartialEq)]
+pub enum Statement {
+    Expression(Box<Expr>),
+    FunctionDef(FuncDef),
+}
 
 #[derive(Debug, PartialEq)]
 pub enum Expr {
@@ -30,11 +30,11 @@ pub enum Expr {
     CodeBlock(Vec<Box<Expr>>),
 }
 
-//#[derive(Debug, PartialEq)]
-// pub enum FuncDef{
-//     FunctionFullDef(FunctionDef),
-//     FunctionArrowDef(FunctionDef),
-// }
+#[derive(Debug, PartialEq)]
+pub enum FuncDef{
+    FunctionFullDef(FunctionDef),
+    FunctionArrowDef(FunctionDef),
+}
 
 #[derive(Debug, PartialEq)]
 pub struct FunctionDef {
