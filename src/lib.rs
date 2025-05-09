@@ -4,6 +4,7 @@ pub fn add(left: u64, right: u64) -> u64 {
 
 pub mod ast;
 pub mod tokens;
+
 lalrpop_util::lalrpop_mod!(pub parser);
 
 #[cfg(test)]
@@ -18,10 +19,10 @@ mod tests {
 
     #[test]
     fn calculator4() {
-        let expr = parser::ExprsListParser::new()
-            .parse("22 * 44 + 66 , 45 + 2")
+        let expr = parser::ProgramParser::new()
+            .parse("22 * 44 + 66 ; 45 + 2")
             .unwrap();
-        assert_eq!(&format!("{:?}", expr[1]), "Op(Op(Number(22), Mul, Number(44)), Add, Number(66))");
+        assert_eq!(&format!("{:?}", expr.statements), "Op(Op(Number(22), Mul, Number(44)), Add, Number(66))");
     }
 
 }

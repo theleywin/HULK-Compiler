@@ -1,15 +1,29 @@
 use std::str::FromStr;
 
-use crate::ast::Program;
 use crate::ast::FunctionDef;
+use crate::ast::FuncDef;
 use crate::ast::Expr;
+use crate::ast::Statement;
+use crate::ast::Program;
 use crate::tokens::*;
 
 grammar;
 
 pub Program: Program = {
-    <functions:FunctionDef*> <main:ExprsList> => Program { functions, main }
-};
+    <v:(<Statement> Semicolon)*> <last:Statement?> => {
+        let mut vec = v;
+        if let Some(e) = last {
+            vec.push(e);
+        }
+        Program{statements:vec,}
+    }
+}
+
+Statement: Box<Statement> = {
+    FunctionFullDef => Box::new(Statement::FunctionDef(FuncDef::FunctionFullDef(<>))),
+    FunctionArrowDef => Box::new(Statement::FunctionDef(FuncDef::FunctionArrowDef(<>))),
+    Expr => Box::new(Statement::Expression(<>))
+}
 
 ExprsList: Vec<Box<Expr>> = {
     <v:(<Expr> Semicolon)*> <last:Expr?> => {
@@ -21,14 +35,14 @@ ExprsList: Vec<Box<Expr>> = {
     }
 };
 
-Expr: Box<Expr> = { EqualityExpr };
+Expr: Box<Expr> = { 
+    Assignment,
+    EqualityExpr,
+};
 
 EqualityExpr: Box<Expr> = {
-    <left:ComparisonExpr> <rest:(EqualityOp ComparisonExpr)*> => {
-        rest.into_iter().fold(left, |l, (op, r)| {
-            Box::new(Expr::BinaryOp(l, op, r))
-        })
-    }
+    EqualityExpr EqualityOp ComparisonExpr  => Box::new(Expr::BinaryOp(<>)),
+    ComparisonExpr,
 };
 
 Function: KeywordToken = {
@@ -49,15 +63,66 @@ IdentifierList: Vec<String> = {
     }
 };
 
-FunctionDef: FunctionDef = {
-    Function <name:Identifier> LParen <params:IdentifierList> RParen Arrow <body:Expr> Semicolon => {
+FunctionArrowDef: FunctionDef = {
+    Function <name:Identifier> LParen <params:IdentifierList> RParen Arrow <body:Expr> => {
         FunctionDef {
             name,
             params,
             body,
         }
+    },
+    Function <name:Identifier> LParen RParen Arrow <body:Expr> => {
+        FunctionDef {
+            name,
+            params: vec![],
+            body,
+        }
     }
 };
+
+FunctionFullDef: FunctionDef = {
+    Function <name:Identifier> LParen <params:IdentifierList> RParen <body:CodeBlock> => {
+        FunctionDef {
+            name,
+            params,
+            body,
+        }
+    },
+    Function <name:Identifier> LParen RParen <body:CodeBlock> => {
+        FunctionDef {
+            name,
+            params: vec![],
+            body,
+        }
+    }
+};
+
+CodeBlock: Box<Expr> = {
+    LBrace <body:ExprsList> RBrace => Box::new(Expr::CodeBlock(body)),
+}
+
+LetIn: Box<Expr> = {
+    Let <a:AssignmentList> In <body:PrimaryExpr> => Box::new(Expr::LetIn(a, body)),
+};
+
+Assignment: Box<Expr> = {
+    <id:Identifier> Assign <e:Expr> => Box::new(Expr::Assignment(id, e)),
+}
+
+AssignmentList: Vec<Box<Expr>> = {
+    <l:AssignmentList> "," <r:Assignment> => {
+        let mut l = l;
+        l.push(r);
+        l
+    },
+    <r:Assignment> => {
+        let mut v = Vec::new();
+        v.push(r);
+        v
+    },
+}
+
+
 
 EqualityOp: OperatorToken = {
     "==" => OperatorToken::EQ,
@@ -65,11 +130,8 @@ EqualityOp: OperatorToken = {
 };
 
 ComparisonExpr: Box<Expr> = {
-    <left:TermExpr> <rest:(ComparisonOp TermExpr)*> => {
-        rest.into_iter().fold(left, |l, (op, r)| {
-            Box::new(Expr::BinaryOp(l, op, r))
-        })
-    }
+    ComparisonExpr ComparisonOp TermExpr  => Box::new(Expr::BinaryOp(<>)),
+    TermExpr,
 };
 
 ComparisonOp: OperatorToken = {
@@ -80,11 +142,8 @@ ComparisonOp: OperatorToken = {
 };
 
 TermExpr: Box<Expr> = {
-    <left:FactorExpr> <rest:(TermOp FactorExpr)*> => {
-        rest.into_iter().fold(left, |l, (op, r)| {
-            Box::new(Expr::BinaryOp(l, op, r))
-        })
-    }
+    TermExpr TermOp FactorExpr  => Box::new(Expr::BinaryOp(<>)),
+    FactorExpr,
 };
 
 TermOp: OperatorToken = {
@@ -93,11 +152,8 @@ TermOp: OperatorToken = {
 };
 
 FactorExpr: Box<Expr> = {
-    <left:ExponentExpr> <rest:(FactorOp ExponentExpr)*> => {
-        rest.into_iter().fold(left, |l, (op, r)| {
-            Box::new(Expr::BinaryOp(l, op, r))
-        })
-    }
+    FactorExpr FactorOp ExponentExpr  => Box::new(Expr::BinaryOp(<>)),
+    ExponentExpr,
 };
 
 FactorOp: OperatorToken = {
@@ -107,7 +163,7 @@ FactorOp: OperatorToken = {
 };
 
 ExponentExpr: Box<Expr> = {
-    <left:UnaryExpr> <op:PowOp> <right:ExponentExpr> => Box::new(Expr::BinaryOp(left, op, right)),
+    UnaryExpr PowOp ExponentExpr => Box::new(Expr::BinaryOp(<>)),
     UnaryExpr,
 };
 
@@ -116,7 +172,7 @@ PowOp: OperatorToken = {
 };
 
 UnaryExpr: Box<Expr> = {
-    <op:UnaryOp> <expr:UnaryExpr> => Box::new(Expr::UnaryOp(op, expr)),
+    UnaryOp UnaryExpr => Box::new(Expr::UnaryOp(<>)),
     PrimaryExpr,
 };
 
@@ -126,14 +182,18 @@ UnaryOp: OperatorToken = {
 };
 
 PrimaryExpr: Box<Expr> = {
+    WhileLoop,
     <name:Identifier> LParen <args:ArgList> RParen => Box::new(Expr::FunctionCall(name, args)),
     Num => Box::new(Expr::Number(<>)),
     Str => Box::new(Expr::Str(<>)),
     Identifier => Box::new(Expr::Identifier(<>)),
     LParen <Expr> RParen => Box::new(*<>),
     PrintExpr,
+    LetIn,
     True => Box::new(Expr::Boolean(true)),
     False => Box::new(Expr::Boolean(false)),
+    CodeBlock,
+    IfElse,
 };
 
 ArgList: Vec<Box<Expr>> = {
@@ -149,12 +209,26 @@ ArgList: Vec<Box<Expr>> = {
     => Vec::new()
 };
 
+WhileLoop: Box<Expr> = {
+    While LParen <condition:Expr> RParen <body:CodeBlock> => Box::new(Expr::WhileLoop(condition, body)),
+};
+
+IfElse: Box<Expr> = {
+    If LParen <condition:Expr> RParen <if_body:PrimaryExpr> Else <else_body:PrimaryExpr> => {
+        Box::new(Expr::IfElse(condition, if_body, else_body))
+    },
+}
+
 PrintExpr: Box<Expr> = {
     Print LParen <Expr> RParen => Box::new(Expr::Print(<>)),
 };
 
 Comma: DelimiterToken = {
     "," => DelimiterToken::COMMA,
+};
+
+Assign: OperatorToken = {
+    "=" => OperatorToken::ASSIGN,
 };
 
 Semicolon: DelimiterToken = {
