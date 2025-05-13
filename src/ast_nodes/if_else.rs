@@ -1,19 +1,16 @@
-use super::Expression;
+use super::expression::Expression;
 
 
-pub struct IfElse {
+#[derive(Debug, PartialEq)]
+pub struct IfElseNode {
     pub condition: Box<Expression>,
     pub then_expression: Box<Expression>,
     pub else_expression: Box<Expression>,
 }
 
-impl IfElse {
-    pub fn new(
-        condition: Expression,
-        then_expression: Expression,
-        else_expression: Expression,
-    ) -> Self {
-        IfElse {
+impl IfElseNode {
+    pub fn new(condition: Expression,then_expression: Expression,else_expression: Expression) -> Self {
+        IfElseNode {
             condition: Box::new(condition),
             then_expression: Box::new(then_expression),
             else_expression: Box::new(else_expression),

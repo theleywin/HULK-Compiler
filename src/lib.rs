@@ -2,7 +2,7 @@ pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }
 
-pub mod ast;
+pub mod ast_nodes;
 pub mod tokens;
 
 lalrpop_util::lalrpop_mod!(pub parser);

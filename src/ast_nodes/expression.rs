@@ -1,0 +1,71 @@
+use super::binary_op::BinaryOpNode;
+use super::function_call::FunctionCallNode;
+use super::unary_op::UnaryOpNode;
+use super::if_else::IfElseNode;
+use super::literals::{NumberLiteralNode,BooleanLiteralNode,StringLiteralNode,IdentifierNode};
+use super::while_loop::WhileNode;
+use super::block::{BlockNode, ExpressionList};
+use super::let_in::{LetInNode,Assignment};
+use crate::tokens::OperatorToken;
+
+#[derive(Debug, PartialEq)]
+pub enum Expression {
+    Number(NumberLiteralNode),
+    Boolean(BooleanLiteralNode),
+    Str(StringLiteralNode),
+    Identifier(IdentifierNode),
+    FunctionCall(FunctionCallNode),
+    WhileLoop(WhileNode),
+    CodeBlock(BlockNode),
+    BinaryOp(BinaryOpNode),
+    UnaryOp(UnaryOpNode),
+    IfElse(IfElseNode),
+    LetIn(LetInNode),
+}
+
+impl Expression {
+    pub fn new_number(value: String) -> Self {
+        Expression::Number(NumberLiteralNode::new(&value))
+    }
+
+    pub fn new_boolean(value: bool) -> Self {
+        Expression::Boolean(BooleanLiteralNode::new(value))
+    }
+
+    pub fn new_string(value: String ) -> Self {
+        Expression::Str(StringLiteralNode::new(&value))
+    }
+
+    pub fn new_identifier(value: String) -> Self {
+        Expression::Identifier(IdentifierNode::new(&value))
+    }
+
+    pub fn new_function_call(function: String, arguments: Vec<Expression> ) -> Self {
+        Expression::FunctionCall(FunctionCallNode::new(function, arguments))
+    }
+
+    pub fn new_while_loop(condition: Expression, body: Expression) -> Self {
+        Expression::WhileLoop(WhileNode::new(condition, body))
+    }
+
+    pub fn new_code_block(expression_list: ExpressionList) -> Self {
+        Expression::CodeBlock(BlockNode::new(expression_list))
+    }
+
+    pub fn new_binary_op(left: Expression, operator: OperatorToken, right: Expression) -> Self {
+        Expression::BinaryOp(BinaryOpNode::new(left, operator, right))
+    }
+
+    pub fn new_unary_op(operator: OperatorToken, operand: Expression) -> Self {
+        Expression::UnaryOp(UnaryOpNode::new(operator, operand))
+    }
+
+    pub fn new_if_else(condition: Expression,then_expression: Expression,else_expression: Expression) -> Self {
+        Expression::IfElse(IfElseNode::new(condition, then_expression, else_expression))
+    }
+
+    pub fn new_let_in(assignments: Vec<Assignment>, body: Expression) -> Self {
+        Expression::LetIn(LetInNode::new(assignments, body))
+    }
+    
+}
