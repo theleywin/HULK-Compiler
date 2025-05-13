@@ -1,5 +1,6 @@
-use super::Expression;
+use super::expression::Expression;
 
+#[derive(Debug, PartialEq)]
 pub struct Assignment {
     pub identifier: String,
     pub expression: Box<Expression>,
@@ -14,14 +15,15 @@ impl Assignment {
     }
 }
 
-pub struct LetIn {
+#[derive(Debug, PartialEq)]
+pub struct LetInNode {
     pub assignments: Vec<Assignment>,
     pub body: Box<Expression>,
 }
 
-impl LetIn {
+impl LetInNode {
     pub fn new(assignments: Vec<Assignment>, body: Expression) -> Self {
-        LetIn {
+        LetInNode {
             assignments,
             body: Box::new(body),
         }

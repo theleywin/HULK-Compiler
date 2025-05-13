@@ -1,11 +1,15 @@
 use std::str::FromStr;
+// use crate::ast::FunctionDef;
+// use crate::ast::FuncDef;
+// use crate::ast::Expr;
+// use crate::ast::Statement;
 
-use crate::ast::FunctionDef;
-use crate::ast::FuncDef;
-use crate::ast::Expr;
-use crate::ast::Statement;
-use crate::ast::Program;
-use crate::tokens::*;
+use super::tokens::*;
+use crate::ast_nodes::program::{Program, Statement};
+use crate::ast_nodes::expression::Expression;
+use crate::ast_nodes::let_in::Assignment;
+use crate::ast_nodes::function_def::FunctionDefNode;
+use crate::ast_nodes::block::ExpressionList;
 
 grammar;
 
@@ -19,38 +23,72 @@ pub Program: Program = {
     }
 }
 
-Statement: Box<Statement> = {
-    FunctionFullDef => Box::new(Statement::FunctionDef(FuncDef::FunctionFullDef(<>))),
-    FunctionArrowDef => Box::new(Statement::FunctionDef(FuncDef::FunctionArrowDef(<>))),
-    Expr => Box::new(Statement::Expression(<>))
+Statement: Statement = {
+    FunctionFullDef => Statement::new_function_def(<>),
+    FunctionArrowDef => Statement::new_function_def(<>),
+    Expr => Statement::new_expression(<>)
 }
 
-ExprsList: Vec<Box<Expr>> = {
+FunctionArrowDef: FunctionDefNode = {
+    Function <name:Identifier> LParen <params:IdentifierList> RParen Arrow <body:Expr> => {
+        FunctionDefNode::new_expr(name,params,body)
+    },
+    Function <name:Identifier> LParen RParen Arrow <body:Expr> => {
+        FunctionDefNode::new_expr(name,vec![],body)
+    }
+};
+
+FunctionFullDef: FunctionDefNode = {
+    Function <name:Identifier> LParen <params:IdentifierList> RParen <body:CodeBlock> => {
+        FunctionDefNode::new_expr(name,params,body)
+    },
+    Function <name:Identifier> LParen RParen <body:CodeBlock> => {
+        FunctionDefNode::new_expr(name,vec![],body)
+    }
+};
+
+Expr: Expression = { 
+    EqualityExpr,
+};
+
+ExprsList: ExpressionList = {
     <v:(<Expr> Semicolon)*> <last:Expr?> => {
         let mut vec = v;
         if let Some(e) = last {
             vec.push(e);
         }
-        vec
+        ExpressionList::new(vec)
     }
 };
 
-Expr: Box<Expr> = { 
-    Assignment,
-    EqualityExpr,
-};
-
-EqualityExpr: Box<Expr> = {
-    EqualityExpr EqualityOp ComparisonExpr  => Box::new(Expr::BinaryOp(<>)),
+EqualityExpr: Expression = {
+    EqualityExpr EqualityOp ComparisonExpr => Expression::new_binary_op(<>),
     ComparisonExpr,
 };
 
-Function: KeywordToken = {
-    "function" => KeywordToken::FUNCTION,
+ComparisonExpr: Expression = {
+    ComparisonExpr ComparisonOp TermExpr => Expression::new_binary_op(<>),
+    TermExpr,
 };
 
-Arrow: DelimiterToken = {
-    "=>" => DelimiterToken::ARROW,
+TermExpr: Expression = {
+    TermExpr TermOp FactorExpr => Expression::new_binary_op(<>),
+    FactorExpr,
+};
+
+FactorExpr: Expression = {
+    FactorExpr FactorOp ExponentExpr => Expression::new_binary_op(<>),
+    ExponentExpr,
+};
+
+ExponentExpr: Expression = {
+    UnaryExpr PowOp ExponentExpr => Expression::new_binary_op(<>),
+    UnaryExpr,
+};
+
+UnaryExpr: Expression = {
+    UnaryOp UnaryExpr => Expression::new_unary_op(<>),
+    PrimaryExpr,
 };
 
 IdentifierList: Vec<String> = {
@@ -63,53 +101,11 @@ IdentifierList: Vec<String> = {
     }
 };
 
-FunctionArrowDef: FunctionDef = {
-    Function <name:Identifier> LParen <params:IdentifierList> RParen Arrow <body:Expr> => {
-        FunctionDef {
-            name,
-            params,
-            body,
-        }
-    },
-    Function <name:Identifier> LParen RParen Arrow <body:Expr> => {
-        FunctionDef {
-            name,
-            params: vec![],
-            body,
-        }
-    }
-};
-
-FunctionFullDef: FunctionDef = {
-    Function <name:Identifier> LParen <params:IdentifierList> RParen <body:CodeBlock> => {
-        FunctionDef {
-            name,
-            params,
-            body,
-        }
-    },
-    Function <name:Identifier> LParen RParen <body:CodeBlock> => {
-        FunctionDef {
-            name,
-            params: vec![],
-            body,
-        }
-    }
-};
-
-CodeBlock: Box<Expr> = {
-    LBrace <body:ExprsList> RBrace => Box::new(Expr::CodeBlock(body)),
+Assignment: Assignment = {
+    <id:Identifier> Assign <e:Expr> => Assignment::new(id,e),
 }
 
-LetIn: Box<Expr> = {
-    Let <a:AssignmentList> In <body:PrimaryExpr> => Box::new(Expr::LetIn(a, body)),
-};
-
-Assignment: Box<Expr> = {
-    <id:Identifier> Assign <e:Expr> => Box::new(Expr::Assignment(id, e)),
-}
-
-AssignmentList: Vec<Box<Expr>> = {
+AssignmentList: Vec<Assignment> = {
     <l:AssignmentList> "," <r:Assignment> => {
         let mut l = l;
         l.push(r);
@@ -122,81 +118,7 @@ AssignmentList: Vec<Box<Expr>> = {
     },
 }
 
-
-
-EqualityOp: OperatorToken = {
-    "==" => OperatorToken::EQ,
-    "!=" => OperatorToken::NEQ,
-};
-
-ComparisonExpr: Box<Expr> = {
-    ComparisonExpr ComparisonOp TermExpr  => Box::new(Expr::BinaryOp(<>)),
-    TermExpr,
-};
-
-ComparisonOp: OperatorToken = {
-    ">" => OperatorToken::GT,
-    ">=" => OperatorToken::GTE,
-    "<" => OperatorToken::LT,
-    "<=" => OperatorToken::LTE,
-};
-
-TermExpr: Box<Expr> = {
-    TermExpr TermOp FactorExpr  => Box::new(Expr::BinaryOp(<>)),
-    FactorExpr,
-};
-
-TermOp: OperatorToken = {
-    "+" => OperatorToken::PLUS,
-    "-" => OperatorToken::MINUS,
-};
-
-FactorExpr: Box<Expr> = {
-    FactorExpr FactorOp ExponentExpr  => Box::new(Expr::BinaryOp(<>)),
-    ExponentExpr,
-};
-
-FactorOp: OperatorToken = {
-    "*" => OperatorToken::MUL,
-    "/" => OperatorToken::DIV,
-    "%" => OperatorToken::MOD,
-};
-
-ExponentExpr: Box<Expr> = {
-    UnaryExpr PowOp ExponentExpr => Box::new(Expr::BinaryOp(<>)),
-    UnaryExpr,
-};
-
-PowOp: OperatorToken = {
-    "^" => OperatorToken::POW,
-};
-
-UnaryExpr: Box<Expr> = {
-    UnaryOp UnaryExpr => Box::new(Expr::UnaryOp(<>)),
-    PrimaryExpr,
-};
-
-UnaryOp: OperatorToken = {
-    "!" => OperatorToken::NOT,
-    "-" => OperatorToken::NEG,
-};
-
-PrimaryExpr: Box<Expr> = {
-    WhileLoop,
-    <name:Identifier> LParen <args:ArgList> RParen => Box::new(Expr::FunctionCall(name, args)),
-    Num => Box::new(Expr::Number(<>)),
-    Str => Box::new(Expr::Str(<>)),
-    Identifier => Box::new(Expr::Identifier(<>)),
-    LParen <Expr> RParen => Box::new(*<>),
-    PrintExpr,
-    LetIn,
-    True => Box::new(Expr::Boolean(true)),
-    False => Box::new(Expr::Boolean(false)),
-    CodeBlock,
-    IfElse,
-};
-
-ArgList: Vec<Box<Expr>> = {
+ArgList: Vec<Expression> = {
     // Handle non-empty arguments
     <first:Expr> <rest:(<Comma> <Expr>)*> => {
         let mut args = vec![first];
@@ -209,18 +131,92 @@ ArgList: Vec<Box<Expr>> = {
     => Vec::new()
 };
 
-WhileLoop: Box<Expr> = {
-    While LParen <condition:Expr> RParen <body:CodeBlock> => Box::new(Expr::WhileLoop(condition, body)),
+CodeBlock: Expression = {
+    LBrace <body:ExprsList> RBrace => Expression::new_code_block(body),
+}
+
+LetIn: Expression = {
+    Let <a:AssignmentList> In <body:PrimaryExpr> => Expression::new_let_in(a,body),
 };
 
-IfElse: Box<Expr> = {
+WhileLoop: Expression = {
+    While LParen <condition:Expr> RParen <body:CodeBlock> => Expression::new_while_loop(condition,body),
+};
+
+IfElse: Expression = {
     If LParen <condition:Expr> RParen <if_body:PrimaryExpr> Else <else_body:PrimaryExpr> => {
-        Box::new(Expr::IfElse(condition, if_body, else_body))
+        Expression::new_if_else(condition,if_body,else_body)
     },
 }
 
-PrintExpr: Box<Expr> = {
-    Print LParen <Expr> RParen => Box::new(Expr::Print(<>)),
+PrimaryExpr: Expression = {
+    WhileLoop,
+    <name:Identifier> LParen <args:ArgList> RParen => Expression::new_function_call(name,args),
+    Num => Expression::new_number(<>),
+    Str => Expression::new_string(<>),
+    Identifier => Expression::new_identifier(<>),
+    LParen <Expr> RParen => <>,
+    LetIn,
+    True => Expression::new_boolean(true),
+    False => Expression::new_boolean(false),
+    CodeBlock,
+    IfElse,
+};
+
+Identifier: String = {
+    r"[A-Za-z][A-Za-z_0-9]*" => String::from_str(<>).unwrap(),
+};
+
+Num: String = {
+    r"[0-9]+(\.[0-9]+)?" => String::from_str(<>).unwrap(),
+};
+
+Str: String = {
+    r#""([^"\\]|\\.)*""# => String::from_str(&<>[1..<>.len()-1]).unwrap(),
+};
+
+// PrintExpr: Box<Expr> = {
+//     Print LParen <Expr> RParen => Box::new(Expr::Print(<>)),
+// };
+
+UnaryOp: OperatorToken = {
+    "!" => OperatorToken::NOT,
+    "-" => OperatorToken::NEG,
+};
+
+PowOp: OperatorToken = {
+    "^" => OperatorToken::POW,
+};
+
+FactorOp: OperatorToken = {
+    "*" => OperatorToken::MUL,
+    "/" => OperatorToken::DIV,
+    "%" => OperatorToken::MOD,
+};
+
+TermOp: OperatorToken = {
+    "+" => OperatorToken::PLUS,
+    "-" => OperatorToken::MINUS,
+};
+
+ComparisonOp: OperatorToken = {
+    ">" => OperatorToken::GT,
+    ">=" => OperatorToken::GTE,
+    "<" => OperatorToken::LT,
+    "<=" => OperatorToken::LTE,
+};
+
+Function: KeywordToken = {
+    "function" => KeywordToken::FUNCTION,
+};
+
+Arrow: DelimiterToken = {
+    "=>" => DelimiterToken::ARROW,
+};
+
+EqualityOp: OperatorToken = {
+    "==" => OperatorToken::EQ,
+    "!=" => OperatorToken::NEQ,
 };
 
 Comma: DelimiterToken = {
@@ -287,14 +283,3 @@ False: KeywordToken = {
     "false" => KeywordToken::FALSE,
 };
 
-Identifier: String = {
-    r"[A-Za-z][A-Za-z_0-9]*" => String::from_str(<>).unwrap(),
-};
-
-Num: f64 = {
-    r"[0-9]+(\.[0-9]+)?" => f64::from_str(<>).unwrap(),
-};
-
-Str: String = {
-    r#""([^"\\]|\\.)*""# => String::from_str(&<>[1..<>.len()-1]).unwrap(),
-};

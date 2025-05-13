@@ -1,15 +1,16 @@
-use super::Expression;
+use super::expression::Expression;
 use crate::tokens::OperatorToken;
 
-pub struct BinaryOp {
+#[derive(Debug, PartialEq)]
+pub struct BinaryOpNode {
     pub left: Box<Expression>,
     pub operator: OperatorToken,
     pub right: Box<Expression>,
 }
 
-impl BinaryOp {
+impl BinaryOpNode {
     pub fn new(left: Expression, operator: OperatorToken, right: Expression) -> Self {
-        BinaryOp {
+        BinaryOpNode {
             left: Box::new(left),
             operator,
             right: Box::new(right),
