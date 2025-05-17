@@ -197,6 +197,7 @@ FactorOp: OperatorToken = {
 TermOp: OperatorToken = {
     "+" => OperatorToken::PLUS,
     "-" => OperatorToken::MINUS,
+    "@" => OperatorToken::CONCAT,
 };
 
 ComparisonOp: OperatorToken = {
@@ -271,9 +272,9 @@ While: KeywordToken = {
     "while" => KeywordToken::WHILE,
 };
 
-Print: KeywordToken = {
-    "print" => KeywordToken::PRINT,
-};
+// Print: KeywordToken = {
+//     "print" => KeywordToken::PRINT,
+// };
 
 True: KeywordToken = {
     "true" => KeywordToken::TRUE,
