@@ -8,7 +8,7 @@ use super::tokens::*;
 use crate::ast_nodes::program::{Program, Statement};
 use crate::ast_nodes::expression::Expression;
 use crate::ast_nodes::let_in::Assignment;
-use crate::ast_nodes::function_def::FunctionDefNode;
+use crate::ast_nodes::function_def::{FunctionDefNode,FunctionParams};
 use crate::ast_nodes::block::ExpressionList;
 
 grammar;
@@ -30,20 +30,20 @@ Statement: Statement = {
 }
 
 FunctionArrowDef: FunctionDefNode = {
-    Function <name:Identifier> LParen <params:IdentifierList> RParen Arrow <body:Expr> => {
-        FunctionDefNode::new_expr(name,params,body)
+    Function <name:Identifier> LParen <params:IdentifierList> RParen Colon <s:Signature> Arrow <body:Expr> => {
+        FunctionDefNode::new_expr(name,params,s,body)
     },
-    Function <name:Identifier> LParen RParen Arrow <body:Expr> => {
-        FunctionDefNode::new_expr(name,vec![],body)
+    Function <name:Identifier> LParen RParen Colon <s:Signature> Arrow <body:Expr> => {
+        FunctionDefNode::new_expr(name,vec![],s,body)
     }
 };
 
 FunctionFullDef: FunctionDefNode = {
-    Function <name:Identifier> LParen <params:IdentifierList> RParen <body:CodeBlock> => {
-        FunctionDefNode::new_expr(name,params,body)
+    Function <name:Identifier> LParen <params:IdentifierList> RParen Colon <s:Signature> <body:CodeBlock> => {
+        FunctionDefNode::new_expr(name,params,s,body)
     },
-    Function <name:Identifier> LParen RParen <body:CodeBlock> => {
-        FunctionDefNode::new_expr(name,vec![],body)
+    Function <name:Identifier> LParen RParen Colon <s:Signature> <body:CodeBlock> => {
+        FunctionDefNode::new_expr(name,vec![],s,body)
     }
 };
 
@@ -108,11 +108,11 @@ UnaryExpr: Expression = {
     PrimaryExpr,
 };
 
-IdentifierList: Vec<String> = {
-    <first:Identifier> <rest:(Comma Identifier)*> => {
-        let mut vec = vec![first];
-        for (_, id) in rest {
-            vec.push(id);
+IdentifierList: Vec<FunctionParams> = {
+    <first:Identifier> Colon <s:Signature> <rest:(Comma Identifier Colon Signature)*> => {
+        let mut vec = vec![FunctionParams::new(first,s)];
+        for (_, id,_,signature) in rest {
+            vec.push(FunctionParams::new(id,signature));
         }
         vec
     }
@@ -261,6 +261,10 @@ Comma: DelimiterToken = {
     "," => DelimiterToken::COMMA,
 };
 
+Colon:  DelimiterToken = {
+    ":" => DelimiterToken::COLON
+}
+
 Assign: OperatorToken = {
     "=" => OperatorToken::ASSIGN,
 };
@@ -336,4 +340,10 @@ True: KeywordToken = {
 False: KeywordToken = {
     "false" => KeywordToken::FALSE,
 };
+
+Signature: TypeSignature = {
+    "Number" => TypeSignature::NumberType,
+    "String" => TypeSignature::StringType,
+    "Boolean" => TypeSignature::BooleanType,
+}
 

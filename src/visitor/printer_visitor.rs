@@ -11,23 +11,30 @@ use crate::ast_nodes::function_def::FunctionDefNode;
 use crate::ast_nodes::destructive_assign::DestructiveAssignNode;
 use super::visitor_trait::Visitor;
 use super::accept::Accept;
+use crate::ast_nodes::program::Program;
 
 pub struct PrinterVisitor; 
 //Here we can store data like variables and functions, but we just print things in this case
 //so we don't need to store anything
 
-impl Visitor<String> for PrinterVisitor {
-    fn visit_program(&mut self, node: &crate::ast_nodes::program::Program) -> String {
+impl PrinterVisitor {
+    pub fn print_program(&mut self, node: &Program) -> String {
         let statements: Vec<String> = node.statements.iter()
             .map(|statement| format!("{} ;\n", statement.accept(self)))
             .collect();
         format!("{}", statements.join("\n")) 
     }
+}
+
+impl Visitor<String> for PrinterVisitor {
+
     fn visit_function_def(&mut self, node: &FunctionDefNode) -> String {
         let name = &node.name;
-        let params = node.params.join(", ");
+        let params: Vec<String> = node.params.iter()
+            .map(|param| format!("{}: {}", param.name, param.signature))
+            .collect();
         let body = node.body.accept(self);
-        format!("function {} ({}) {{ \n{}\n}}" , name, params, body)
+        format!("function {} ({}) : {} {{ \n{}\n}}" , name, params.join(", "),node.return_type, body)
     }
     fn visit_literal_number(&mut self, node: &NumberLiteralNode) -> String {
         format!("{}", node.value)
