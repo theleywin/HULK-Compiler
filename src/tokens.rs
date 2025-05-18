@@ -1,6 +1,6 @@
 #[derive(Debug, PartialEq)]
 pub enum KeywordToken {
-    PRINT,
+    //PRINT,
     WHILE,
     ELIF,
     ELSE,
@@ -29,6 +29,7 @@ pub enum OperatorToken {
     LT,
     LTE,
     ASSIGN,
+    CONCAT,
 }
 
 #[derive(Debug, PartialEq)]

@@ -4,11 +4,10 @@ mod tokens;
 
 lalrpop_mod!(pub parser);
 
+#[cfg(not(test))]
 fn main() {
-    let input = "let x = 5 in x + x ;";    
-    
-    let expr = parser::ProgramParser::new()
-            .parse(input)
-            .unwrap();
+    let input = "function cot(x) => 1 / tan(x);";
+
+    let expr = parser::ProgramParser::new().parse(input).unwrap();
     println!("{:?}", expr);
 }
