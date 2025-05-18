@@ -1,5 +1,6 @@
 
 pub mod ast_nodes;
+pub mod visitor;
 pub mod tokens;
 
 lalrpop_util::lalrpop_mod!(pub parser);

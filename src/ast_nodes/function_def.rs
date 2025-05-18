@@ -16,17 +16,3 @@ impl FunctionDefNode {
         }
     }
 }
-
-// pub struct FunctionCall {
-//     pub name: String,
-//     pub args: Vec<Expression>,
-// }
-// 
-// impl FunctionCall {
-//     pub fn new(name: String, args: Vec<Expression>) -> Self {
-//         FunctionCall {
-//             name,
-//             args,
-//         }
-//     }
-// }

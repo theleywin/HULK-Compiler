@@ -7,6 +7,8 @@ use super::while_loop::WhileNode;
 use super::block::{BlockNode, ExpressionList};
 use super::let_in::{LetInNode,Assignment};
 use crate::tokens::OperatorToken;
+use crate::visitor::accept::Accept;
+use crate::visitor::visitor_trait::Visitor;
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
@@ -68,4 +70,22 @@ impl Expression {
         Expression::LetIn(LetInNode::new(assignments, body))
     }
     
+} 
+
+impl Accept for Expression {
+    fn accept<V: Visitor<T>,T>(&self, visitor: &mut V) -> T {
+        match self {
+            Expression::Number(node) => visitor.visit_literal_number(node),
+            Expression::Boolean(node) => visitor.visit_literal_boolean(node),
+            Expression::Str(node) => visitor.visit_literal_string(node),
+            Expression::Identifier(node) => visitor.visit_identifier(node),
+            Expression::FunctionCall(node) => visitor.visit_function_call(node),
+            Expression::WhileLoop(node) => visitor.visit_while_loop(node),
+            Expression::CodeBlock(node) => visitor.visit_code_block(node),
+            Expression::BinaryOp(node) => visitor.visit_binary_op(node),
+            Expression::UnaryOp(node) => visitor.visit_unary_op(node),
+            Expression::IfElse(node) => visitor.visit_if_else(node),
+            Expression::LetIn(node) => visitor.visit_let_in(node),
+        }
+    }
 }
