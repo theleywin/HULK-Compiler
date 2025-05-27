@@ -7,5 +7,7 @@ pub mod if_else;
 pub mod let_in;
 pub mod unary_op;
 pub mod while_loop;
+pub mod for_loop;
 pub mod literals;
 pub mod program;
+pub mod destructive_assign;
