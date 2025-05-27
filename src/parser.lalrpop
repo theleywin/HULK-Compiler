@@ -48,7 +48,14 @@ FunctionFullDef: FunctionDefNode = {
 };
 
 Expr: Expression = { 
-    EqualityExpr,
+    DestructiveAssignExpr,
+    LogicalOrExpr
+};
+
+DestructiveAssignExpr: Expression = {
+    <id:Identifier> DestructiveAssignOp <e:Expr> => {
+        Expression::new_destructive_assign(id, e)
+    }
 };
 
 ExprsList: ExpressionList = {
@@ -59,6 +66,16 @@ ExprsList: ExpressionList = {
         }
         ExpressionList::new(vec)
     }
+};
+
+LogicalOrExpr: Expression = {
+    LogicalOrExpr LogicalOrOp LogicalAndExpr => Expression::new_binary_op(<>),
+    LogicalAndExpr
+};
+
+LogicalAndExpr: Expression = {
+    LogicalAndExpr LogicalAndOp EqualityExpr => Expression::new_binary_op(<>),
+    EqualityExpr
 };
 
 EqualityExpr: Expression = {
@@ -140,7 +157,26 @@ LetIn: Expression = {
 };
 
 WhileLoop: Expression = {
-    While LParen <condition:Expr> RParen <body:CodeBlock> => Expression::new_while_loop(condition,body),
+    While LParen <condition:Expr> RParen <body:PrimaryExpr> => Expression::new_while_loop(condition,body),
+};
+
+//Maybe catch these errors in a different place (Like Semantic Analysis)
+ForLoop: Expression = {
+    For LParen <id:Identifier> In <call:PrimaryExpr> RParen <body:PrimaryExpr> => {
+        if let Expression::FunctionCall(func_call) = call {
+            if func_call.function_name == "range" && func_call.arguments.len() == 2 {
+                let mut args = func_call.arguments;
+                let start = args.remove(0);
+                let end = args.remove(0);
+                
+                Expression::new_for_loop(id, start, end, body)
+            } else {
+                panic!("For loop must use `range` with exactly two arguments");
+            }
+        } else {
+            panic!("For loop iterable must be a `range` function call");
+        }
+    }
 };
 
 IfElse: Expression = {
@@ -151,7 +187,8 @@ IfElse: Expression = {
 
 PrimaryExpr: Expression = {
     WhileLoop,
-    <name:Identifier> LParen <args:ArgList> RParen => Expression::new_function_call(name,args),
+    ForLoop,
+    <name:Identifier> LParen <args:ArgList> RParen => Expression::new_function_call(name, args),
     Num => Expression::new_number(<>),
     Str => Expression::new_string(<>),
     Identifier => Expression::new_identifier(<>),
@@ -228,6 +265,18 @@ Assign: OperatorToken = {
     "=" => OperatorToken::ASSIGN,
 };
 
+DestructiveAssignOp: OperatorToken = {
+    ":=" => OperatorToken::DASSIGN
+};
+
+LogicalAndOp: OperatorToken = {
+    "&" => OperatorToken::AND,
+};
+
+LogicalOrOp: OperatorToken = {
+    "|" => OperatorToken::OR,
+};
+
 Semicolon: DelimiterToken = {
     ";" => DelimiterToken::SEMICOLON,
 };
@@ -270,6 +319,10 @@ If: KeywordToken = {
 
 While: KeywordToken = {
     "while" => KeywordToken::WHILE,
+};
+
+For: KeywordToken = {
+    "for" => KeywordToken::FOR,
 };
 
 // Print: KeywordToken = {

@@ -5,7 +5,9 @@ use super::if_else::IfElseNode;
 use super::literals::{NumberLiteralNode,BooleanLiteralNode,StringLiteralNode,IdentifierNode};
 use super::while_loop::WhileNode;
 use super::block::{BlockNode, ExpressionList};
+use super::for_loop::ForNode;
 use super::let_in::{LetInNode,Assignment};
+use super::destructive_assign::DestructiveAssignNode;
 use crate::tokens::OperatorToken;
 use crate::visitor::accept::Accept;
 use crate::visitor::visitor_trait::Visitor;
@@ -18,11 +20,13 @@ pub enum Expression {
     Identifier(IdentifierNode),
     FunctionCall(FunctionCallNode),
     WhileLoop(WhileNode),
+    ForLoop(ForNode),
     CodeBlock(BlockNode),
     BinaryOp(BinaryOpNode),
     UnaryOp(UnaryOpNode),
     IfElse(IfElseNode),
     LetIn(LetInNode),
+    DestructiveAssign(DestructiveAssignNode),
 }
 
 impl Expression {
@@ -50,6 +54,10 @@ impl Expression {
         Expression::WhileLoop(WhileNode::new(condition, body))
     }
 
+    pub fn new_for_loop(variable: String, start: Expression, end: Expression, body: Expression) -> Self {
+        Expression::ForLoop(ForNode::new(variable, start, end, body))
+    }
+
     pub fn new_code_block(expression_list: ExpressionList) -> Self {
         Expression::CodeBlock(BlockNode::new(expression_list))
     }
@@ -69,6 +77,10 @@ impl Expression {
     pub fn new_let_in(assignments: Vec<Assignment>, body: Expression) -> Self {
         Expression::LetIn(LetInNode::new(assignments, body))
     }
+
+    pub fn new_destructive_assign(identifier: String, expr: Expression) -> Self {
+        Expression::DestructiveAssign(DestructiveAssignNode::new(identifier, expr))
+    }
     
 } 
 
@@ -81,11 +93,13 @@ impl Accept for Expression {
             Expression::Identifier(node) => visitor.visit_identifier(node),
             Expression::FunctionCall(node) => visitor.visit_function_call(node),
             Expression::WhileLoop(node) => visitor.visit_while_loop(node),
+            Expression::ForLoop(node) => visitor.visit_for_loop(node),
             Expression::CodeBlock(node) => visitor.visit_code_block(node),
             Expression::BinaryOp(node) => visitor.visit_binary_op(node),
             Expression::UnaryOp(node) => visitor.visit_unary_op(node),
             Expression::IfElse(node) => visitor.visit_if_else(node),
             Expression::LetIn(node) => visitor.visit_let_in(node),
+            Expression::DestructiveAssign(node) => visitor.visit_destructive_assign(node),
         }
     }
 }

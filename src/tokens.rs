@@ -4,6 +4,7 @@ use std::fmt;
 pub enum KeywordToken {
     //PRINT,
     WHILE,
+    FOR,
     ELIF,
     ELSE,
     IF,
@@ -32,6 +33,9 @@ pub enum OperatorToken {
     LTE,
     ASSIGN,
     CONCAT,
+    DASSIGN,
+    OR,
+    AND,
 }
 
 
@@ -55,6 +59,9 @@ impl fmt::Display for OperatorToken {
             OperatorToken::LTE => "<=",
             OperatorToken::ASSIGN => "=",
             OperatorToken::CONCAT => "@",
+            OperatorToken::DASSIGN => ":=",
+            OperatorToken::AND => "&",
+            OperatorToken::OR => "|",
         };
         write!(f, "{}", s)
     }
