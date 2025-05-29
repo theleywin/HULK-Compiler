@@ -9,10 +9,8 @@ use crate::ast_nodes::while_loop::WhileNode;
 use crate::ast_nodes::block::BlockNode;
 use crate::ast_nodes::let_in::LetInNode;
 use crate::ast_nodes::function_def::FunctionDefNode;
-use crate::ast_nodes::program::Program;
 
 pub trait Visitor<T> {
-    fn visit_program(&mut self, node: &Program) -> T;
     fn visit_function_def(&mut self, node: &FunctionDefNode) -> T;
     fn visit_literal_number(&mut self, node: &NumberLiteralNode) -> T;
     fn visit_literal_boolean(&mut self, node: &BooleanLiteralNode) -> T;

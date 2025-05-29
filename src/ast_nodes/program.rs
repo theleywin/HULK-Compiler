@@ -24,12 +24,6 @@ impl Statement {
     }
 }
 
-impl Accept for Program {
-    fn accept<V: Visitor<T>,T>(&self, visitor: &mut V) -> T {
-        visitor.visit_program(self)
-    }
-}
-
 impl Accept for Statement {
     fn accept<V: Visitor<T>,T>(&self, visitor: &mut V) -> T {
         match self {
