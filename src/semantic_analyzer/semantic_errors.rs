@@ -12,7 +12,8 @@ pub enum SemanticError {
     UnknownError(String),
     InvalidArgumentsCount(usize,usize,String),
     InvalidTypeArgument(TypeSignature,TypeSignature,usize,String),
-    InvalidFunctionReturn(TypeSignature,TypeSignature,String)
+    InvalidFunctionReturn(TypeSignature,TypeSignature,String),
+    RedefinitionOfVariable(String)
 }
 
 impl SemanticError {
@@ -54,6 +55,9 @@ impl SemanticError {
             }
             SemanticError::InvalidFunctionReturn(body_type,func_return ,func_name ) => {
                 format!("Error: function {} returns {} but function's body returns {}",func_name,func_return,body_type)
+            }
+            SemanticError::RedefinitionOfVariable(var_name) => {
+                format!("Error: variable {} already defined in this context.", var_name)
             }
         }
     }

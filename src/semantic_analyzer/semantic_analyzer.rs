@@ -250,8 +250,11 @@ impl Visitor<TypeSignature> for SemanticAnalyzer {
         self.enter_scope();
         for assig in node.assignments.iter() {
             let expr_type = assig.expression.accept(self);
-            // Check if already exist de definition of the variable !!!!!!!!!!!!!!!!!!!!!!!!!!
-            self.context.symbols.insert(assig.identifier.clone(), expr_type);
+            if let Some(_) = self.context.symbols.get(&assig.identifier) {
+                self.new_error(SemanticError::RedefinitionOfVariable(assig.identifier.clone()));
+            } else {
+                self.context.symbols.insert(assig.identifier.clone(), expr_type);
+            }
         }
         let return_type = node.body.accept(self);
         self.exit_scope();

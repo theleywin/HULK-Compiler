@@ -9,7 +9,13 @@ use crate::visitor::printer_visitor::PrinterVisitor;
 lalrpop_mod!(pub parser);
 
 fn main() {
-    let input = "function hello(name : String) : String { 5 + 5 } ; ";
+    let input = "for ( i  in range(1,10) ) { i + 5 ; } ;
+    let x = 5 , y = 10 in (x + y) ;
+    let x = 9 in (y := 10) ;
+    function SumLet (a: Number , b : Number) : Number {
+        let x = a , y = b in (x + y) ;
+    } ;
+    ";
 
     let expr = parser::ProgramParser::new().parse(input).unwrap();
     let mut printer = PrinterVisitor;
