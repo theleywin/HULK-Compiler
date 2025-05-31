@@ -4,17 +4,35 @@ pub mod ast_nodes;
 mod tokens;
 pub mod visitor;
 pub mod semantic_analyzer;
+pub mod types_tree;
 use crate::visitor::printer_visitor::PrinterVisitor;
 
 lalrpop_mod!(pub parser);
 
 fn main() {
-    let input = "for ( i  in range(1,10) ) { i + 5 ; } ;
-    let x = 5 , y = 10 in (x + y) ;
-    let x = 9 in (y := 10) ;
-    function SumLet (a: Number , b : Number) : Number {
-        let x = a , y = b in (x + y) ;
+    let input = "
+    for ( i in range(1,10) ) {
+        if ( i > 5 ) {
+            i;
+        } else {
+            \"hola\";
+        }
+    };
+    let x = 5 in ( x + x ) ;
+    let y = 4 , z = 3 in ( x + y + z ) ;
+    while ( !(3 < 4) ) { 
+        !\"hola\" ;
+    };
+
+    function SumLet (a: Number , b : Number) : Object {
+        if ( a > b ) {
+            5 ;
+        } else {
+            \"hola\" ;
+        }
     } ;
+
+    let x = SumLet( \"hola\", 5) in x ;
     ";
 
     let expr = parser::ProgramParser::new().parse(input).unwrap();
@@ -27,12 +45,14 @@ fn main() {
             println!("Semantic Analyzer OK");
         },
         Err(errors) => {
-            println!("Errors:");
+            println!("\x1b[31mErrors:");
             for err in errors.iter() {
-                println!("{}", err.message());
+            println!("{}", err.message());
             }
+            println!("\x1b[0m");
         }
     }
     println!("");
-    println!("{}", printer.print_program(&expr));
+    // Imprime el resultado en azul
+    println!("\x1b[34m{}\x1b[0m", printer.print_program(&expr));
 }

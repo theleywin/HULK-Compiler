@@ -38,27 +38,6 @@ pub enum OperatorToken {
     AND,
 }
 
-#[derive(Debug, PartialEq,Clone)]
-pub enum TypeSignature {
-    NumberType,
-    StringType,
-    BooleanType,
-    UnknownType,
-}
-
-impl fmt::Display for TypeSignature {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            TypeSignature::NumberType => "Number",
-            TypeSignature::StringType => "String",
-            TypeSignature::BooleanType => "Boolean",
-            TypeSignature::UnknownType => "Unknown",
-        };
-        write!(f, "{}", s)  
-    }
-}
-
-
 impl fmt::Display for OperatorToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {

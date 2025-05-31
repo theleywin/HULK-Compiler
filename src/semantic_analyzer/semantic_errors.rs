@@ -1,19 +1,21 @@
-use crate::tokens::{OperatorToken, TypeSignature};
+use crate::types_tree::tree_node::TypeNode;
+use crate::tokens::OperatorToken;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SemanticError {
     DivisionByZero,
     UndefinedIdentifier(String),
-    InvalidConditionType(TypeSignature),
-    InvalidBinaryOperation(TypeSignature, TypeSignature, OperatorToken),
-    InvalidUnaryOperation(TypeSignature, OperatorToken),
+    InvalidConditionType(TypeNode),
+    InvalidBinaryOperation(TypeNode, TypeNode, OperatorToken),
+    InvalidUnaryOperation(TypeNode, OperatorToken),
     RedefinitionOfFunction(String),
     UndeclaredFunction(String),
     UnknownError(String),
     InvalidArgumentsCount(usize,usize,String),
-    InvalidTypeArgument(TypeSignature,TypeSignature,usize,String),
-    InvalidFunctionReturn(TypeSignature,TypeSignature,String),
-    RedefinitionOfVariable(String)
+    InvalidTypeArgument(TypeNode,TypeNode,usize,String),
+    InvalidFunctionReturn(TypeNode,TypeNode,String),
+    RedefinitionOfVariable(String),
+    UndefinedType(String)
 }
 
 impl SemanticError {
@@ -24,18 +26,18 @@ impl SemanticError {
                 format!("Error: Undefined identifier: {}.", identifier)
             }
             SemanticError::InvalidConditionType(return_type) => {
-                format!("Error: Invalid condition type: {:?}.", return_type)
+                format!("Error: Invalid condition type: {:?}.", return_type.type_name)
             }
             SemanticError::InvalidBinaryOperation(left, right, op) => {
                 format!(
                     "Error: Invalid binary operation between types {:?} and {:?} with operator {:?}.",
-                    left, right, op
+                    left.type_name, right.type_name, op
                 )
             }
             SemanticError::InvalidUnaryOperation(return_type, op) => {
                 format!(
                     "Error: Invalid unary operation on type {:?} with operator {:?}.",
-                    return_type, op
+                    return_type.type_name, op
                 )
             }
             SemanticError::UnknownError(message) => {
@@ -51,13 +53,16 @@ impl SemanticError {
                 format!("Error: function call to {}, expected {} arguments, found {}.",func_name,func_arg_count,curr_arg_count)
             }
             SemanticError::InvalidTypeArgument(curr_type,func_arg_type,arg_pos ,func_name ) => {
-                format!("Error: function {} receive {} on position {} but {} was found.",func_name,func_arg_type,arg_pos,curr_type)
+                format!("Error: function {} receives {} on argument {} but {} was found.",func_name,func_arg_type.type_name,arg_pos + 1,curr_type.type_name)
             }
             SemanticError::InvalidFunctionReturn(body_type,func_return ,func_name ) => {
-                format!("Error: function {} returns {} but function's body returns {}",func_name,func_return,body_type)
+                format!("Error: function {} returns {} but function's body returns {}",func_name,func_return.type_name,body_type.type_name)
             }
             SemanticError::RedefinitionOfVariable(var_name) => {
                 format!("Error: variable {} already defined in this context.", var_name)
+            }
+            SemanticError::UndefinedType(type_name) => {
+                format!("Error: type {} is not defined.", type_name)
             }
         }
     }
