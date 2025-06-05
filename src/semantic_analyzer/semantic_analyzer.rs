@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use super::return_types::{FunctionInfo, SemanticContext};
 use super::semantic_errors::SemanticError;
-use crate::ast_nodes::program::Program;
+use crate::ast_nodes::program::{Program, Statement};
 use crate::ast_nodes::binary_op::BinaryOpNode;
 use crate::ast_nodes::function_call::FunctionCallNode;
 use crate::ast_nodes::unary_op::UnaryOpNode;
@@ -53,6 +53,7 @@ impl SemanticAnalyzer {
     }
 
     pub fn analyze(&mut self, node: &Program) -> Result<(), Vec<SemanticError>> {
+        self.get_functions_names_and_signatures(node);
         for statement in &node.statements {
             statement.accept(self);
         }
@@ -65,6 +66,36 @@ impl SemanticAnalyzer {
 
     pub fn get_built_in_types(&self , built_in: &BuiltInTypes) -> TypeNode {
         self.types_tree.get_type(built_in.as_str()).unwrap()
+    }
+
+    pub fn get_functions_names_and_signatures(&mut self, node: &Program) {
+        for statement in &node.statements {
+                match statement {
+                    Statement::StatementFunctionDef(node) => {
+                        let func_return= node.return_type.clone();
+                        let mut arg_types = Vec::new();
+                        for param in &node.params { 
+                            if let Some(param_type) = self.types_tree.get_type(&param.signature) {
+                                if let Some(_variable) = arg_types.iter().find(|(name, _)| *name == param.name) {
+                                    self.new_error(SemanticError::ParamNameAlreadyExist(param.name.clone(),node.name.clone()));
+                                } else {
+                                    arg_types.push((param.name.clone(), param_type));
+                                }
+                            }
+                            else {
+                                self.new_error(SemanticError::UndefinedType(param.signature.clone()));
+                                arg_types.push((param.name.clone(),self.get_built_in_types(&BuiltInTypes::Unknown)));
+                            }
+                        }
+                        if self.context.declared_functions.contains_key(&node.name) {
+                            self.new_error(SemanticError::RedefinitionOfFunction(node.name.clone()));
+                        } else {
+                            self.context.declared_functions.insert(node.name.clone(), FunctionInfo::new(node.name.clone(), arg_types.clone(),self.types_tree.get_type(&func_return).unwrap()));
+                        }
+                    },
+                    Statement::StatementExpression(_expr) => continue ,
+                }
+        }
     }
 
 }
@@ -93,36 +124,22 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
 
     fn visit_function_def(&mut self, node: &FunctionDefNode) -> TypeNode {
         self.enter_scope();
-        let func_return= node.return_type.clone();
-        let mut arg_types: Vec<TypeNode> = vec![];
-        for param in &node.params { 
-            if let Some(param_type) = self.types_tree.get_type(&param.signature) {
-                self.context.symbols.insert(param.name.clone(), param_type.clone());
-                arg_types.push(param_type);
+        if let Some(function) = self.context.declared_functions.get(&node.name){
+            for param in &function.arguments_types {
+                self.context.symbols.insert(param.0.clone(), param.1.clone());
             }
-            else {
-                self.new_error(SemanticError::UndefinedType(param.signature.clone()));
-                self.context.symbols.insert(param.name.clone(), self.get_built_in_types(&BuiltInTypes::Unknown));
-                arg_types.push(self.get_built_in_types(&BuiltInTypes::Unknown));
-            }
-        }
-        if self.context.declared_functions.contains_key(&node.name) {
-            self.new_error(SemanticError::RedefinitionOfFunction(node.name.clone()));
-        } else {
-            self.context.declared_functions.insert(node.name.clone(), FunctionInfo::new(node.name.clone(), arg_types.clone(),self.types_tree.get_type(&node.return_type.clone()).unwrap()));
         }
         let body_type = node.body.accept(self);
         let mut return_type_node = self.get_built_in_types(&BuiltInTypes::Unknown);
-        if let Some(func_type) = self.types_tree.get_type(&func_return.clone()) {
+        if let Some(func_type) = self.types_tree.get_type(&node.return_type.clone()) {
             if ! self.types_tree.is_ancestor(&func_type, &body_type) {
                 self.new_error(SemanticError::InvalidFunctionReturn(body_type, func_type.clone(), node.name.clone()));
             }
             return_type_node = func_type;
         } else {
-            self.new_error(SemanticError::UndefinedType(func_return.clone()));
+            self.new_error(SemanticError::UndefinedType(node.return_type.clone()));
         }
         self.exit_scope();
-        self.context.declared_functions.insert(node.name.clone(), FunctionInfo::new(node.name.clone(), arg_types, return_type_node.clone()));
         return_type_node
     }
 
@@ -158,8 +175,8 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
             else {
                 for (index, arg) in node.arguments.iter().enumerate() {
                     let arg_type = arg.accept(self);
-                    if arg_type != arguments_types[index] {
-                        self.new_error(SemanticError::InvalidTypeArgument(arg_type, arguments_types[index].clone(), index, func_name.clone()));
+                    if arg_type != arguments_types[index].1 {
+                        self.new_error(SemanticError::InvalidTypeArgument(arg_type, arguments_types[index].1.clone(), index, func_name.clone()));
                     }
                 }
             }

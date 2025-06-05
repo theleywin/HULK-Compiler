@@ -15,7 +15,8 @@ pub enum SemanticError {
     InvalidTypeArgument(TypeNode,TypeNode,usize,String),
     InvalidFunctionReturn(TypeNode,TypeNode,String),
     RedefinitionOfVariable(String),
-    UndefinedType(String)
+    UndefinedType(String),
+    ParamNameAlreadyExist(String,String)
 }
 
 impl SemanticError {
@@ -63,6 +64,9 @@ impl SemanticError {
             }
             SemanticError::UndefinedType(type_name) => {
                 format!("Error: type {} is not defined.", type_name)
+            }
+            SemanticError::ParamNameAlreadyExist(param_name, func_name) => {
+                format!("Error: parameter name {} already exists in the context of function {}.", param_name, func_name)
             }
         }
     }
