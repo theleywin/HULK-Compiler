@@ -11,6 +11,13 @@ lalrpop_mod!(pub parser);
 
 fn main() {
     let input = "
+    function SumPro ( a: Number , b : Number ) : Number {
+        if ( a > b ) {
+            5 ;
+        } else {
+            SumLet( a, b ) ;
+        }
+    } ;
     for ( i in range(1,10) ) {
         if ( i > 5 ) {
             i;
@@ -24,6 +31,8 @@ fn main() {
         !\"hola\" ;
     };
 
+    let x = SumLet( 5, 5) in x ;
+
     function SumLet (a: Number , b : Number) : Object {
         if ( a > b ) {
             5 ;
@@ -32,7 +41,6 @@ fn main() {
         }
     } ;
 
-    let x = SumLet( \"hola\", 5) in x ;
     ";
 
     let expr = parser::ProgramParser::new().parse(input).unwrap();
