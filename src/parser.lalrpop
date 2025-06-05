@@ -341,9 +341,7 @@ False: KeywordToken = {
     "false" => KeywordToken::FALSE,
 };
 
-Signature: TypeSignature = {
-    "Number" => TypeSignature::NumberType,
-    "String" => TypeSignature::StringType,
-    "Boolean" => TypeSignature::BooleanType,
+Signature: String = {
+    r"[A-Za-z][A-Za-z_0-9]*" => String::from_str(<>).unwrap(),
 }
 
