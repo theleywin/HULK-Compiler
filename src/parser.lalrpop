@@ -10,6 +10,24 @@ use crate::ast_nodes::expression::Expression;
 use crate::ast_nodes::let_in::Assignment;
 use crate::ast_nodes::function_def::{FunctionDefNode,FunctionParams};
 use crate::ast_nodes::block::ExpressionList;
+use crate::tokens::Token;
+use lalrpop_util::ParseError;
+
+pub type ParseError = lalrpop_util::ParseError<usize, Token, &'static str>;
+
+pub fn format_error(error: ParseError) -> String {
+    match error {
+        ParseError::InvalidToken { location } => 
+            format!("Token inválido en posición {}", location),
+        ParseError::UnrecognizedToken { token: Some((l, token, r)), expected } => 
+            format!("Token inesperado '{}' en posición {}. Se esperaba: {}", token, l, expected.join(", ")),
+        ParseError::ExtraToken { token: (l, token) } => 
+            format!("Token extra '{}' en posición {}", token, l),
+        ParseError::User { error } => 
+            format!("Error de sintaxis: {}", error),
+        _ => format!("Error desconocido: {:?}", error)
+    }
+}
 
 grammar;
 
@@ -200,148 +218,149 @@ PrimaryExpr: Expression = {
     IfElse,
 };
 
-Identifier: String = {
-    r"[A-Za-z][A-Za-z_0-9]*" => String::from_str(<>).unwrap(),
+Identifier: Token = {
+    r"[A-Za-z][A-Za-z_0-9]*" => Token::Identifier(String::from_str(<>).unwrap()),
 };
 
-Num: String = {
-    r"[0-9]+(\.[0-9]+)?" => String::from_str(<>).unwrap(),
+Num: Token = {
+    r"[0-9]+(\.[0-9]+)?" => Token::Number(String::from_str(<>).unwrap()),
 };
 
-Str: String = {
-    r#""([^"\\]|\\.)*""# => String::from_str(&<>[1..<>.len()-1]).unwrap(),
+Str: Token = {
+    r#""([^"\\]|\\.)*""# => Token::StringLiteral(String::from_str(&<>[1..<>.len()-1]).unwrap()),
 };
 
 // PrintExpr: Box<Expr> = {
 //     Print LParen <Expr> RParen => Box::new(Expr::Print(<>)),
 // };
 
-UnaryOp: OperatorToken = {
-    "!" => OperatorToken::NOT,
-    "-" => OperatorToken::NEG,
+UnaryOp: Token = {
+    "!" => Token::Operator(OperatorToken::NOT),
+    "-" => Token::Operator(OperatorToken::NEG),
 };
 
-PowOp: OperatorToken = {
-    "^" => OperatorToken::POW,
+PowOp: Token = {
+    "^" => Token::Operator(OperatorToken::POW),
 };
 
-FactorOp: OperatorToken = {
-    "*" => OperatorToken::MUL,
-    "/" => OperatorToken::DIV,
-    "%" => OperatorToken::MOD,
+FactorOp: Token = {
+    "*" => Token::Operator(OperatorToken::MUL),
+    "/" => Token::Operator(OperatorToken::DIV),
+    "%" => Token::Operator(OperatorToken::MOD),
 };
 
-TermOp: OperatorToken = {
-    "+" => OperatorToken::PLUS,
-    "-" => OperatorToken::MINUS,
-    "@" => OperatorToken::CONCAT,
+TermOp: Token = {
+    "+" => Token::Operator(OperatorToken::PLUS),
+    "-" => Token::Operator(OperatorToken::MINUS),
+    "@" => Token::Operator(OperatorToken::CONCAT),
 };
 
-ComparisonOp: OperatorToken = {
-    ">" => OperatorToken::GT,
-    ">=" => OperatorToken::GTE,
-    "<" => OperatorToken::LT,
-    "<=" => OperatorToken::LTE,
+ComparisonOp: Token = {
+    ">" => Token::Operator(OperatorToken::GT),
+    ">=" => Token::Operator(OperatorToken::GTE),
+    "<" => Token::Operator(OperatorToken::LT),
+    "<=" => Token::Operator(OperatorToken::LTE),
 };
 
-Function: KeywordToken = {
-    "function" => KeywordToken::FUNCTION,
+Function: Token = {
+    "function" => Token::Keyword(KeywordToken::FUNCTION),
 };
 
-Arrow: DelimiterToken = {
-    "=>" => DelimiterToken::ARROW,
+
+Arrow: Token = {
+    "=>" => Token::Delimiter(DelimiterToken::ARROW),
 };
 
-EqualityOp: OperatorToken = {
-    "==" => OperatorToken::EQ,
-    "!=" => OperatorToken::NEQ,
+EqualityOp: Token = {
+    "==" => Token::Operator(OperatorToken::EQ),
+    "!=" => Token::Operator(OperatorToken::NEQ),
 };
 
-Comma: DelimiterToken = {
-    "," => DelimiterToken::COMMA,
+Comma: Token = {
+    "," => Token::Delimiter(DelimiterToken::COMMA),
 };
 
-Colon:  DelimiterToken = {
-    ":" => DelimiterToken::COLON
-}
-
-Assign: OperatorToken = {
-    "=" => OperatorToken::ASSIGN,
+Colon: Token = {
+    ":" => Token::Delimiter(DelimiterToken::COLON),
 };
 
-DestructiveAssignOp: OperatorToken = {
-    ":=" => OperatorToken::DASSIGN
+Assign: Token = {
+    "=" => Token::Operator(OperatorToken::ASSIGN),
 };
 
-LogicalAndOp: OperatorToken = {
-    "&" => OperatorToken::AND,
+DestructiveAssignOp: Token = {
+    ":=" => Token::Operator(OperatorToken::DASSIGN),
 };
 
-LogicalOrOp: OperatorToken = {
-    "|" => OperatorToken::OR,
+LogicalAndOp: Token = {
+    "&" => Token::Operator(OperatorToken::AND),
 };
 
-Semicolon: DelimiterToken = {
-    ";" => DelimiterToken::SEMICOLON,
+LogicalOrOp: Token = {
+    "|" => Token::Operator(OperatorToken::OR),
 };
 
-RParen: DelimiterToken = {
-    ")" => DelimiterToken::RPAREN,
+Semicolon: Token = {
+    ";" => Token::Delimiter(DelimiterToken::SEMICOLON),
 };
 
-LParen: DelimiterToken = {
-    "(" => DelimiterToken::LPAREN,
+LParen: Token = {
+    "(" => Token::Delimiter(DelimiterToken::LPAREN),
 };
 
-RBrace: DelimiterToken = {
-    "}" => DelimiterToken::RBRACE,
+RParen: Token = {
+    ")" => Token::Delimiter(DelimiterToken::RPAREN),
 };
 
-LBrace: DelimiterToken = {
-    "{" => DelimiterToken::LBRACE,
+RBrace: Token = {
+    "}" => Token::Delimiter(DelimiterToken::RBRACE),
 };
 
-Let: KeywordToken = {
-    "let" => KeywordToken::LET,
+LBrace: Token = {
+    "{" => Token::Delimiter(DelimiterToken::LBRACE),
 };
 
-Else: KeywordToken = {
-    "else" => KeywordToken::ELSE,
+Let: Token = {
+    "let" =>Token::Keyword( KeywordToken::LET),
 };
 
-Elif: KeywordToken = {
-    "elif" => KeywordToken::ELIF,
+Else: Token = {
+    "else" => Token::Keyword(KeywordToken::ELSE),
 };
 
-In: KeywordToken = {
-    "in" => KeywordToken::IN,
+Elif: Token = {
+    "elif" => Token::Keyword(KeywordToken::ELIF),
 };
 
-If: KeywordToken = {
-    "if" => KeywordToken::IF,
+In: Token = {
+    "in" => Token::Keyword(KeywordToken::IN),
 };
 
-While: KeywordToken = {
-    "while" => KeywordToken::WHILE,
+If: Token = {
+    "if" => Token::Keyword(KeywordToken::IF),
 };
 
-For: KeywordToken = {
-    "for" => KeywordToken::FOR,
+While: Token = {
+    "while" => Token::Keyword(KeywordToken::WHILE),
+};
+
+For: Token = {
+    "for" => Token::Keyword(KeywordToken::FOR),
 };
 
 // Print: KeywordToken = {
 //     "print" => KeywordToken::PRINT,
 // };
 
-True: KeywordToken = {
-    "true" => KeywordToken::TRUE,
+True: Token = {
+    "true" => Token::Keyword(KeywordToken::TRUE),
 };
 
-False: KeywordToken = {
-    "false" => KeywordToken::FALSE,
+False: Token = {
+    "false" => Token::Keyword(KeywordToken::FALSE),
 };
 
-Signature: String = {
-    r"[A-Za-z][A-Za-z_0-9]*" => String::from_str(<>).unwrap(),
-}
+Signature: Token = {
+    r"[A-Za-z][A-Za-z_0-9]*" => Token::Identifier(String::from_str(<>).unwrap()),
+};
 
