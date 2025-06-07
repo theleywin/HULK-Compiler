@@ -13,6 +13,9 @@ pub enum KeywordToken {
     TRUE,
     FALSE,
     FUNCTION,
+    INHERITS,
+    TYPE,
+    NEW
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -36,6 +39,7 @@ pub enum OperatorToken {
     DASSIGN,
     OR,
     AND,
+    DOT,
 }
 
 impl fmt::Display for OperatorToken {
@@ -60,6 +64,7 @@ impl fmt::Display for OperatorToken {
             OperatorToken::DASSIGN => ":=",
             OperatorToken::AND => "&",
             OperatorToken::OR => "|",
+            OperatorToken::DOT => ".",
         };
         write!(f, "{}", s)  
     }
