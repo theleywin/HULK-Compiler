@@ -8,9 +8,11 @@ use super::block::{BlockNode, ExpressionList};
 use super::for_loop::ForNode;
 use super::let_in::{LetInNode,Assignment};
 use super::destructive_assign::DestructiveAssignNode;
+use crate::ast_nodes::type_member_access::{TypeFunctionAccessNode, TypePropAccessNode};
 use crate::tokens::OperatorToken;
 use crate::visitor::accept::Accept;
 use crate::visitor::visitor_trait::Visitor;
+use crate::ast_nodes::type_instance::TypeInstanceNode;
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
@@ -27,6 +29,9 @@ pub enum Expression {
     IfElse(IfElseNode),
     LetIn(LetInNode),
     DestructiveAssign(DestructiveAssignNode),
+    TypeInstance(TypeInstanceNode),
+    TypeFunctionAccess(TypeFunctionAccessNode),
+    TypePropAccess(TypePropAccessNode),
 }
 
 impl Expression {
@@ -46,7 +51,7 @@ impl Expression {
         Expression::Identifier(IdentifierNode::new(&value))
     }
 
-    pub fn new_function_call(function: String, arguments: Vec<Expression> ) -> Self {
+    pub fn new_function_call(function: String, arguments: Vec<Expression>) -> Self {
         Expression::FunctionCall(FunctionCallNode::new(function, arguments))
     }
 
@@ -78,11 +83,23 @@ impl Expression {
         Expression::LetIn(LetInNode::new(assignments, body))
     }
 
-    pub fn new_destructive_assign(identifier: String, expr: Expression) -> Self {
+    pub fn new_destructive_assign(identifier: Expression, expr: Expression) -> Self {
         Expression::DestructiveAssign(DestructiveAssignNode::new(identifier, expr))
     }
-    
-} 
+
+    pub fn new_type_instance(type_name: String, type_args: Vec<Expression>) -> Self {
+        Expression::TypeInstance(TypeInstanceNode::new(type_name, type_args))
+    }
+
+    pub fn new_type_function_access(object: Expression, member: FunctionCallNode) -> Self {
+        Expression::TypeFunctionAccess(TypeFunctionAccessNode::new(object, member))
+    }
+
+    pub fn new_type_prop_access(object: Expression, member: String) -> Self {
+        Expression::TypePropAccess(TypePropAccessNode::new(object, member))
+    }
+
+}
 
 impl Accept for Expression {
     fn accept<V: Visitor<T>,T>(&self, visitor: &mut V) -> T {
@@ -100,6 +117,9 @@ impl Accept for Expression {
             Expression::IfElse(node) => visitor.visit_if_else(node),
             Expression::LetIn(node) => visitor.visit_let_in(node),
             Expression::DestructiveAssign(node) => visitor.visit_destructive_assign(node),
+            Expression::TypeInstance(node) => visitor.visit_type_instance(node),
+            Expression::TypeFunctionAccess(node) => visitor.visit_type_function_access(node),
+            Expression::TypePropAccess(node) => visitor.visit_type_prop_access(node),
         }
     }
 }

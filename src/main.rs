@@ -11,6 +11,23 @@ lalrpop_mod!(pub parser);
 
 fn main() {
     let input = "
+    type Point (x: Number, y: Number) {
+        x = x;
+        y = y;
+
+        getX() : Number => self.x;
+        getY() : Number => self.y;
+
+        setX(x: Number) : Number => 5 := x ;
+        setY(y: Number) : Number => self.y := y ;
+    }; 
+
+    type PolarPoint(phi: Number, rho: Number) inherits Point(rho * sin(phi), rho * cos(phi)) {
+        rho() : Number => sqrt(getX() ^ 2 + getY() ^ 2);
+    };
+
+    let x = new Point(3, 4) in x.getX() + x.getY() + x.prop ;
+
     function SumPro ( a: Number , b : Number ) : Number {
         if ( a > b ) {
             5 ;
@@ -18,6 +35,7 @@ fn main() {
             SumLet( a, b ) ;
         }
     } ;
+
     for ( i in range(1,10) ) {
         if ( i > 5 ) {
             i;

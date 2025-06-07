@@ -1,5 +1,6 @@
 use crate::ast_nodes::binary_op::BinaryOpNode;
 use crate::ast_nodes::function_call::FunctionCallNode;
+use crate::ast_nodes::type_def::{TypeDefNode, TypeMember};
 use crate::ast_nodes::unary_op::UnaryOpNode;
 use crate::ast_nodes::if_else::IfElseNode;
 use crate::ast_nodes::literals::{NumberLiteralNode,BooleanLiteralNode,StringLiteralNode,IdentifierNode};
@@ -12,6 +13,8 @@ use crate::ast_nodes::destructive_assign::DestructiveAssignNode;
 use super::visitor_trait::Visitor;
 use super::accept::Accept;
 use crate::ast_nodes::program::Program;
+use crate::ast_nodes::type_instance::TypeInstanceNode;
+use crate::ast_nodes::type_member_access::{TypeFunctionAccessNode, TypePropAccessNode};
 
 pub struct PrinterVisitor; 
 //Here we can store data like variables and functions, but we just print things in this case
@@ -46,7 +49,7 @@ impl Visitor<String> for PrinterVisitor {
         format!("\"{}\"", node.value)
     }
     fn visit_identifier(&mut self, node: &IdentifierNode) -> String {
-        format!("{}", node.value)
+        format!("{}", node.value.clone())
     }
     fn visit_function_call(&mut self, node: &FunctionCallNode) -> String {
         let args: Vec<String> = node.arguments.iter()
@@ -97,8 +100,54 @@ impl Visitor<String> for PrinterVisitor {
         format!("let {} in {}", assignments.join(", "), body)
     }
     fn visit_destructive_assign(&mut self, node: &DestructiveAssignNode) -> String {
-        let id = &node.identifier;
-        let expr = node.expression.accept(self);
+        let id = &node.identifier.accept(self);
+        let expr = &node.expression.accept(self);
         format!("{} := {}", id, expr)
+    }
+    fn visit_type_def(&mut self, node: &TypeDefNode) -> String {
+        let type_name = node.identifier.clone();
+        let type_params: Vec<String> = node.params.iter()
+            .map(|param| format!("{}: {}", param.name, param.signature))
+            .collect();
+        let members: Vec<String> = node.members.iter()
+            .map(|member| {
+                match member {
+                    TypeMember::Property(assignment) => {
+                        let prop_name = assignment.identifier.clone();
+                        let prop_value = assignment.expression.accept(self);
+                        format!("{} = {}\n", prop_name, prop_value)
+                    }
+                    TypeMember::Method(method) => {
+                        let method_def = self.visit_function_def(method);
+                        format!("{}\n", method_def)
+                    }
+                }
+            })
+            .collect();
+
+        if let Some(parent) = &node.parent {
+            let parent_args: Vec<String> = node.parent_args.iter()
+                .map(|arg| arg.accept(self))
+                .collect();
+            return format!("type {} {} inherits {}({}) {{\n{}\n}}", type_name, (if type_params.is_empty() {"".to_string()} else { format!("( {} )", type_params.join(", ")) }), parent, parent_args.join(", "), members.join("\n"));
+        }
+        format!("type {} {} {{\n{}\n}}", type_name, (if type_params.is_empty() {"".to_string()} else { format!("( {} )", type_params.join(", ")) }), members.join("\n"))
+    }
+    fn visit_type_instance(&mut self, node: &TypeInstanceNode) -> String {
+        let type_name = &node.type_name;
+        let type_args: Vec<String> = node.arguments.iter()
+            .map(|arg| arg.accept(self))
+            .collect();
+        format!("new {}({})", type_name, type_args.join(", "))
+    }
+    fn visit_type_function_access(&mut self, node: &TypeFunctionAccessNode) -> String {
+        let object = node.object.accept(self);
+        let member_call = self.visit_function_call(&node.member);
+        format!("{}.{}", object, member_call)
+    }
+    fn visit_type_prop_access(&mut self, node: &TypePropAccessNode) -> String {
+        let object = node.object.accept(self);
+        let member = &node.member;
+        format!("{}.{}", object, member)
     }
 }

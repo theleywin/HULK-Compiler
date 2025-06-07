@@ -1,7 +1,7 @@
 use super::expression::Expression;
 
 #[derive(Debug, PartialEq)]
-pub struct Assignment {
+pub struct Assignment { //TODO Add optional Signature Assignment
     pub identifier: String,
     pub expression: Box<Expression>,
 }

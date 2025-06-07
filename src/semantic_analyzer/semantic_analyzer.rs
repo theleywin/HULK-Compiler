@@ -18,6 +18,8 @@ use crate::visitor::visitor_trait::Visitor;
 use crate::visitor::accept::Accept;
 use crate::tokens::OperatorToken;
 use crate::types_tree::tree_node::TypeNode;
+use crate::ast_nodes::type_instance::TypeInstanceNode;
+use crate::ast_nodes::expression::Expression;
 
 
 pub struct SemanticAnalyzer {
@@ -93,7 +95,7 @@ impl SemanticAnalyzer {
                             self.context.declared_functions.insert(node.name.clone(), FunctionInfo::new(node.name.clone(), arg_types.clone(),self.types_tree.get_type(&func_return).unwrap()));
                         }
                     },
-                    Statement::StatementExpression(_expr) => continue ,
+                    _ => continue ,
                 }
         }
     }
@@ -111,14 +113,26 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
     }
 
     fn visit_destructive_assign(&mut self, node: &DestructiveAssignNode) -> TypeNode {
-        if self.context.symbols.contains_key(&node.identifier) {
-            let new_type = node.expression.accept(self);
-            self.context.symbols.insert(node.identifier.clone(), new_type.clone());
-            new_type
-        }
-        else {
-            self.new_error(SemanticError::UndefinedIdentifier(node.identifier.clone()));
-            self.get_built_in_types(&BuiltInTypes::Unknown)
+        match *node.identifier  {
+            Expression::Identifier(ref id) => {
+                if self.context.symbols.contains_key(&id.value) {
+                    let new_type = node.expression.accept(self);
+                    self.context.symbols.insert(id.value.clone(), new_type.clone());
+                    new_type
+                }
+                else {
+                    self.new_error(SemanticError::UndefinedIdentifier(id.value.clone()));
+                    self.get_built_in_types(&BuiltInTypes::Unknown)
+                }
+            },
+            Expression::TypePropAccess(ref _access_node) => {
+                //You can`t change properties of a type instance outside the type definition
+                self.get_built_in_types(&BuiltInTypes::Object) //TODO
+            },
+            _ => {
+                self.new_error(SemanticError::UnknownError("Destructive assignment can only be done to an identifier or type property access".to_string()));
+                self.get_built_in_types(&BuiltInTypes::Unknown)
+            }
         }
     }
 
@@ -321,5 +335,23 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         let return_type = node.body.accept(self);
         self.exit_scope();
         return_type
+    }
+    
+    fn visit_type_def(&mut self, _node: &crate::ast_nodes::type_def::TypeDefNode) -> TypeNode {
+        // Type definitions are not analyzed in this phase, they are just registered in the types tree.
+        // The actual type checking will be done when the type is used.
+        self.get_built_in_types(&BuiltInTypes::Object) //TODO
+    }
+    
+    fn visit_type_instance(&mut self, _node: &TypeInstanceNode) -> TypeNode {
+        self.get_built_in_types(&BuiltInTypes::Object) //TODO
+    }
+    
+    fn visit_type_function_access(&mut self, _node: &crate::ast_nodes::type_member_access::TypeFunctionAccessNode) -> TypeNode {
+        self.get_built_in_types(&BuiltInTypes::Object) //TODO
+    }
+    
+    fn visit_type_prop_access(&mut self, _node: &crate::ast_nodes::type_member_access::TypePropAccessNode) -> TypeNode {
+        self.get_built_in_types(&BuiltInTypes::Object) //TODO
     }
 }

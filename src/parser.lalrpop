@@ -10,6 +10,8 @@ use crate::ast_nodes::expression::Expression;
 use crate::ast_nodes::let_in::Assignment;
 use crate::ast_nodes::function_def::{FunctionDefNode,FunctionParams};
 use crate::ast_nodes::block::ExpressionList;
+use crate::ast_nodes::type_def::{TypeDefNode, TypeInherits, TypeMember};
+use crate::ast_nodes::function_call::FunctionCallNode;
 
 grammar;
 
@@ -26,6 +28,7 @@ pub Program: Program = {
 Statement: Statement = {
     FunctionFullDef => Statement::new_function_def(<>),
     FunctionArrowDef => Statement::new_function_def(<>),
+    TypeDef => Statement::new_type_def(<>),
     Expr => Statement::new_expression(<>)
 }
 
@@ -47,13 +50,80 @@ FunctionFullDef: FunctionDefNode = {
     }
 };
 
+FunctionCall: Expression = {
+    <name:Identifier> <args:ArgList> => Expression::new_function_call(name, args)
+};
+
+TypeDef: TypeDefNode = {
+    Type <name:Identifier> <p:Params?> <i:Inheritance?> LBrace <b:TypeBodyDef> RBrace => {
+        let p = if let Some(params) = p {
+            params
+        } else {
+            Vec::new()
+        };
+        if let Some(inherits) = i {
+            TypeDefNode::new(name, p, Some(inherits.identifier), inherits.params, b)
+        } else {
+            TypeDefNode::new(name, p, None, Vec::new(), b)
+        }
+    }
+};
+
+TypeBodyDef: Vec<TypeMember> = {
+    <h:(<MemberDef> Semicolon)*> <t:MemberDef?> => {
+        let mut vec = h;
+        if let Some(e) = t {
+            vec.push(e);
+        }
+        vec
+    }
+};
+
+MemberDef: TypeMember = {
+    TypeMemberAssignment,
+    TypeMemberFunctionDef
+};
+
+TypeMemberAssignment: TypeMember = {
+    <id:Identifier> Assign <e:Expr> => TypeMember::new_property(Assignment::new(id,e)),
+};
+
+TypeMemberFunctionDef: TypeMember = {
+    <i:Identifier> LParen <params:IdentifierList> RParen Colon <s:Signature> Arrow <body:Expr> => {
+        TypeMember::new_method(FunctionDefNode::new_expr(i,params,s,body))
+    },
+    <i:Identifier> LParen RParen Colon <s:Signature> Arrow <body:Expr> => {
+        TypeMember::new_method(FunctionDefNode::new_expr(i,Vec::new(),s,body))
+    },
+    <i:Identifier> LParen <params:IdentifierList> RParen Colon <s:Signature> <body:CodeBlock> => {
+        TypeMember::new_method(FunctionDefNode::new_expr(i,params,s,body))
+    },
+    <i:Identifier> LParen RParen Colon <s:Signature> <body:CodeBlock> => {
+        TypeMember::new_method(FunctionDefNode::new_expr(i,Vec::new(),s,body))
+    }
+};
+
+
+Inheritance: TypeInherits = {
+    Inherits <parent:Identifier> <p:ArgList> => TypeInherits::new(parent, p),
+    Inherits <parent:Identifier> => TypeInherits::new(parent, Vec::new())
+}
+
+TypeFunctionAccess: Expression = {
+    <object:PrimaryExpr> DotOp <name:Identifier> <args:ArgList> => Expression::new_type_function_access(object, FunctionCallNode::new(name, args)),
+}
+
+TypePropAccess: Expression = {
+    <object:PrimaryExpr> DotOp <name:Identifier> => Expression::new_type_prop_access(object, name),
+};
+
 Expr: Expression = { 
     DestructiveAssignExpr,
     LogicalOrExpr
 };
 
 DestructiveAssignExpr: Expression = {
-    <id:Identifier> DestructiveAssignOp <e:Expr> => {
+    <id:PrimaryExpr> DestructiveAssignOp <e:Expr> => {
         Expression::new_destructive_assign(id, e)
     }
 };
@@ -105,7 +175,7 @@ ExponentExpr: Expression = {
 
 UnaryExpr: Expression = {
     UnaryOp UnaryExpr => Expression::new_unary_op(<>),
-    PrimaryExpr,
+    CompositeExpr,
 };
 
 IdentifierList: Vec<FunctionParams> = {
@@ -116,6 +186,11 @@ IdentifierList: Vec<FunctionParams> = {
         }
         vec
     }
+};
+
+Params: Vec<FunctionParams> = {
+    LParen <params:IdentifierList> RParen => params,
+    LParen RParen => Vec::new()
 };
 
 Assignment: Assignment = {
@@ -135,9 +210,22 @@ AssignmentList: Vec<Assignment> = {
     },
 }
 
+PropsAssigment: Vec<Assignment> = {
+    <h:PropsAssigment> ";" <t:Assignment> => {
+        let mut h = h;
+        h.push(t);
+        h
+    },
+    <t:Assignment> => {
+        let mut v = Vec::new();
+        v.push(t);
+        v
+    },
+}
+
 ArgList: Vec<Expression> = {
     // Handle non-empty arguments
-    <first:Expr> <rest:(<Comma> <Expr>)*> => {
+    LParen <first:Expr> <rest:(<Comma> <Expr>)*> RParen => {
         let mut args = vec![first];
         for (_, expr) in rest {
             args.push(expr);
@@ -145,7 +233,7 @@ ArgList: Vec<Expression> = {
         args
     },
     // Handle empty arguments (no parameters)
-    => Vec::new()
+    LParen RParen => Vec::new()
 };
 
 CodeBlock: Expression = {
@@ -153,16 +241,16 @@ CodeBlock: Expression = {
 }
 
 LetIn: Expression = {
-    Let <a:AssignmentList> In <body:PrimaryExpr> => Expression::new_let_in(a,body),
+    Let <a:AssignmentList> In <body:CompositeExpr> => Expression::new_let_in(a,body),
 };
 
 WhileLoop: Expression = {
-    While LParen <condition:Expr> RParen <body:PrimaryExpr> => Expression::new_while_loop(condition,body),
+    While LParen <condition:Expr> RParen <body:CompositeExpr> => Expression::new_while_loop(condition,body),
 };
 
 //Maybe catch these errors in a different place (Like Semantic Analysis)
 ForLoop: Expression = {
-    For LParen <id:Identifier> In <call:PrimaryExpr> RParen <body:PrimaryExpr> => {
+    For LParen <id:Identifier> In <call:CompositeExpr> RParen <body:CompositeExpr> => {
         if let Expression::FunctionCall(func_call) = call {
             if func_call.function_name == "range" && func_call.arguments.len() == 2 {
                 let mut args = func_call.arguments;
@@ -180,24 +268,32 @@ ForLoop: Expression = {
 };
 
 IfElse: Expression = {
-    If LParen <condition:Expr> RParen <if_body:PrimaryExpr> Else <else_body:PrimaryExpr> => {
+    If LParen <condition:Expr> RParen <if_body:CompositeExpr> Else <else_body:CompositeExpr> => {
         Expression::new_if_else(condition,if_body,else_body)
     },
 }
 
-PrimaryExpr: Expression = {
+CompositeExpr: Expression = {
+    LetIn,
+    IfElse,
     WhileLoop,
     ForLoop,
-    <name:Identifier> LParen <args:ArgList> RParen => Expression::new_function_call(name, args),
+    PrimaryExpr,
+}
+
+PrimaryExpr: Expression = {
+    FunctionCall,
+    New <name:Identifier> <args:ArgList> => Expression::new_type_instance(name, args),
+    TypeFunctionAccess,
+    TypePropAccess,
     Num => Expression::new_number(<>),
     Str => Expression::new_string(<>),
     Identifier => Expression::new_identifier(<>),
     LParen <Expr> RParen => <>,
-    LetIn,
     True => Expression::new_boolean(true),
     False => Expression::new_boolean(false),
     CodeBlock,
-    IfElse,
+    
 };
 
 Identifier: String = {
@@ -281,6 +377,10 @@ LogicalOrOp: OperatorToken = {
     "|" => OperatorToken::OR,
 };
 
+DotOp: OperatorToken = {
+    "." => OperatorToken::DOT
+};
+
 Semicolon: DelimiterToken = {
     ";" => DelimiterToken::SEMICOLON,
 };
@@ -327,6 +427,18 @@ While: KeywordToken = {
 
 For: KeywordToken = {
     "for" => KeywordToken::FOR,
+};
+
+Type: KeywordToken = {
+    "type" => KeywordToken::TYPE,
+}
+
+Inherits: KeywordToken = {
+    "inherits" => KeywordToken::INHERITS,
+};
+
+New: KeywordToken = {
+    "new" => KeywordToken::NEW,
 };
 
 // Print: KeywordToken = {
