@@ -1,3 +1,5 @@
+use crate::types_tree::tree_node::TypeNode;
+
 use super::expression::Expression;
 
 #[derive(Debug, PartialEq)]
@@ -19,6 +21,7 @@ impl Assignment {
 pub struct LetInNode {
     pub assignments: Vec<Assignment>,
     pub body: Box<Expression>,
+    pub node_type: Option<TypeNode>,
 }
 
 impl LetInNode {
@@ -26,6 +29,10 @@ impl LetInNode {
         LetInNode {
             assignments,
             body: Box::new(body),
+            node_type: None,
         }
+    }
+    pub fn set_type(&mut self, node_type: TypeNode) {
+        self.node_type = Some(node_type);
     }
 }

@@ -31,7 +31,7 @@ impl Statement {
 }
 
 impl Accept for Statement {
-    fn accept<V: Visitor<T>,T>(&self, visitor: &mut V) -> T {
+    fn accept<V: Visitor<T>,T>(&mut self, visitor: &mut V) -> T {
         match self {
             Statement::StatementExpression(expr) => expr.accept(visitor),
             Statement::StatementFunctionDef(node) => visitor.visit_function_def(node),

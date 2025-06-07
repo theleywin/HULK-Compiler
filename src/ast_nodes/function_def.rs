@@ -1,3 +1,5 @@
+use crate::types_tree::tree_node::TypeNode;
+
 use super::expression::Expression;
 
 #[derive(Debug, PartialEq,Clone)]
@@ -21,6 +23,7 @@ pub struct FunctionDefNode {
     pub params: Vec<FunctionParams>,
     pub return_type: String,
     pub body: Expression,
+    pub node_type: Option<TypeNode>,
 }
 
 impl FunctionDefNode {
@@ -30,6 +33,10 @@ impl FunctionDefNode {
             params,
             return_type,
             body: expr,
+            node_type: None,
         }
+    }
+    pub fn set_type(&mut self, node_type: TypeNode) {
+        self.node_type = Some(node_type);
     }
 }
