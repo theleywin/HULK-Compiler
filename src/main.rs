@@ -61,11 +61,11 @@ fn main() {
 
     ";
 
-    let expr = parser::ProgramParser::new().parse(input).unwrap();
+    let mut expr = parser::ProgramParser::new().parse(input).unwrap();
     let mut printer = PrinterVisitor;
     let mut semantic_analyzer = SemanticAnalyzer::new();
     println!("");
-    let result = semantic_analyzer.analyze(&expr);
+    let result = semantic_analyzer.analyze(&mut expr);
     match result {
         Ok(_) => {
             println!("Semantic Analyzer OK");
@@ -80,5 +80,5 @@ fn main() {
     }
     println!("");
     // Imprime el resultado en azul
-    println!("\x1b[34m{}\x1b[0m", printer.print_program(&expr));
+    println!("\x1b[34m{}\x1b[0m", printer.print_program(&mut expr));
 }

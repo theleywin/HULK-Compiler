@@ -102,7 +102,7 @@ impl Expression {
 }
 
 impl Accept for Expression {
-    fn accept<V: Visitor<T>,T>(&self, visitor: &mut V) -> T {
+    fn accept<V: Visitor<T>,T>(&mut self, visitor: &mut V) -> T {
         match self {
             Expression::Number(node) => visitor.visit_literal_number(node),
             Expression::Boolean(node) => visitor.visit_literal_boolean(node),

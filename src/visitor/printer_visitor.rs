@@ -21,8 +21,8 @@ pub struct PrinterVisitor;
 //so we don't need to store anything
 
 impl PrinterVisitor {
-    pub fn print_program(&mut self, node: &Program) -> String {
-        let statements: Vec<String> = node.statements.iter()
+    pub fn print_program(&mut self, node: &mut Program) -> String {
+        let statements: Vec<String> = node.statements.iter_mut()
             .map(|statement| format!("{} ;\n", statement.accept(self)))
             .collect();
         format!("{}", statements.join("\n")) 
@@ -31,7 +31,7 @@ impl PrinterVisitor {
 
 impl Visitor<String> for PrinterVisitor {
 
-    fn visit_function_def(&mut self, node: &FunctionDefNode) -> String {
+    fn visit_function_def(&mut self, node: &mut FunctionDefNode) -> String {
         let name = &node.name;
         let params: Vec<String> = node.params.iter()
             .map(|param| format!("{}: {}", param.name, param.signature))
@@ -39,77 +39,77 @@ impl Visitor<String> for PrinterVisitor {
         let body = node.body.accept(self);
         format!("function {} ({}) : {} {{ \n{}\n}}" , name, params.join(", "),node.return_type, body)
     }
-    fn visit_literal_number(&mut self, node: &NumberLiteralNode) -> String {
+    fn visit_literal_number(&mut self, node: &mut NumberLiteralNode) -> String {
         format!("{}", node.value)
     }
-    fn visit_literal_boolean(&mut self, node: &BooleanLiteralNode) -> String {
+    fn visit_literal_boolean(&mut self, node: &mut BooleanLiteralNode) -> String {
         format!("{}", node.value)
     }
-    fn visit_literal_string(&mut self, node: &StringLiteralNode) -> String {
+    fn visit_literal_string(&mut self, node: &mut StringLiteralNode) -> String {
         format!("\"{}\"", node.value)
     }
-    fn visit_identifier(&mut self, node: &IdentifierNode) -> String {
+    fn visit_identifier(&mut self, node: &mut IdentifierNode) -> String {
         format!("{}", node.value.clone())
     }
-    fn visit_function_call(&mut self, node: &FunctionCallNode) -> String {
-        let args: Vec<String> = node.arguments.iter()
+    fn visit_function_call(&mut self, node: &mut FunctionCallNode) -> String {
+        let args: Vec<String> = node.arguments.iter_mut()
             .map(|arg| arg.accept(self))
             .collect();
 
         format!("{}({})", node.function_name, args.join(", "))
     }
-    fn visit_while_loop(&mut self, node: &WhileNode) -> String {
+    fn visit_while_loop(&mut self, node: &mut WhileNode) -> String {
         let condition = node.condition.accept(self);
         let body = node.body.accept(self);
         format!("while ({}) {{\n{}\n}}", condition, body)
     }
-    fn visit_for_loop(&mut self, node: &ForNode) -> String {
+    fn visit_for_loop(&mut self, node: &mut ForNode) -> String {
         let variable = &node.variable;
         let start = node.start.accept(self);
         let end = node.end.accept(self);
         let body = node.body.accept(self);
         format!("for ({} in range({}, {})) {{\n{}\n}}", variable, start, end, body)
     }
-    fn visit_code_block(&mut self, node: &BlockNode) -> String {
-        let expressions: Vec<String> = node.expression_list.expressions.iter()
+    fn visit_code_block(&mut self, node: &mut BlockNode) -> String {
+        let expressions: Vec<String> = node.expression_list.expressions.iter_mut()
             .map(|expr| expr.accept(self))
             .collect();
         format!("{}", expressions.join("\n"))
     }
-    fn visit_binary_op(&mut self, node: &BinaryOpNode) -> String {
+    fn visit_binary_op(&mut self, node: &mut BinaryOpNode) -> String {
         let left = node.left.accept(self);
         let right = node.right.accept(self);
         
         format!("{} {} {}", left, node.operator, right)
     }
-    fn visit_unary_op(&mut self, node: &UnaryOpNode) -> String {
+    fn visit_unary_op(&mut self, node: &mut UnaryOpNode) -> String {
         let operand = node.operand.accept(self);
         format!("{} {}", node.operator, operand)
     }
-    fn visit_if_else(&mut self, node: &IfElseNode) -> String {
+    fn visit_if_else(&mut self, node: &mut IfElseNode) -> String {
         let condition = node.condition.accept(self);
         let then_branch = node.then_expression.accept(self);
         let else_branch = node.else_expression.accept(self);
         format!("if ({}) {{\n{}\n}} else {{\n{}\n}}", condition, then_branch, else_branch)
     }
-    fn visit_let_in(&mut self,node: &LetInNode) -> String {
-        let assignments: Vec<String> = node.assignments.iter()
+    fn visit_let_in(&mut self,node: &mut LetInNode) -> String {
+        let assignments: Vec<String> = node.assignments.iter_mut()
             .map(|assignment| format!("{} = {}", assignment.identifier, assignment.expression.accept(self)))
             .collect();
         let body = node.body.accept(self);
         format!("let {} in {}", assignments.join(", "), body)
     }
-    fn visit_destructive_assign(&mut self, node: &DestructiveAssignNode) -> String {
+    fn visit_destructive_assign(&mut self, node: &mut DestructiveAssignNode) -> String {
         let id = &node.identifier.accept(self);
         let expr = &node.expression.accept(self);
         format!("{} := {}", id, expr)
     }
-    fn visit_type_def(&mut self, node: &TypeDefNode) -> String {
+    fn visit_type_def(&mut self, node: &mut TypeDefNode) -> String {
         let type_name = node.identifier.clone();
         let type_params: Vec<String> = node.params.iter()
             .map(|param| format!("{}: {}", param.name, param.signature))
             .collect();
-        let members: Vec<String> = node.members.iter()
+        let members: Vec<String> = node.members.iter_mut()
             .map(|member| {
                 match member {
                     TypeMember::Property(assignment) => {
@@ -118,7 +118,7 @@ impl Visitor<String> for PrinterVisitor {
                         format!("{} = {}\n", prop_name, prop_value)
                     }
                     TypeMember::Method(method) => {
-                        let method_def = self.visit_function_def(method);
+                        let method_def = self.visit_function_def( method);
                         format!("{}\n", method_def)
                     }
                 }
@@ -126,26 +126,26 @@ impl Visitor<String> for PrinterVisitor {
             .collect();
 
         if let Some(parent) = &node.parent {
-            let parent_args: Vec<String> = node.parent_args.iter()
+            let parent_args: Vec<String> = node.parent_args.iter_mut()
                 .map(|arg| arg.accept(self))
                 .collect();
             return format!("type {} {} inherits {}({}) {{\n{}\n}}", type_name, (if type_params.is_empty() {"".to_string()} else { format!("( {} )", type_params.join(", ")) }), parent, parent_args.join(", "), members.join("\n"));
         }
         format!("type {} {} {{\n{}\n}}", type_name, (if type_params.is_empty() {"".to_string()} else { format!("( {} )", type_params.join(", ")) }), members.join("\n"))
     }
-    fn visit_type_instance(&mut self, node: &TypeInstanceNode) -> String {
+    fn visit_type_instance(&mut self, node: &mut TypeInstanceNode) -> String {
         let type_name = &node.type_name;
-        let type_args: Vec<String> = node.arguments.iter()
+        let type_args: Vec<String> = node.arguments.iter_mut()
             .map(|arg| arg.accept(self))
             .collect();
         format!("new {}({})", type_name, type_args.join(", "))
     }
-    fn visit_type_function_access(&mut self, node: &TypeFunctionAccessNode) -> String {
+    fn visit_type_function_access(&mut self, node: &mut TypeFunctionAccessNode) -> String {
         let object = node.object.accept(self);
-        let member_call = self.visit_function_call(&node.member);
+        let member_call = self.visit_function_call(&mut node.member);
         format!("{}.{}", object, member_call)
     }
-    fn visit_type_prop_access(&mut self, node: &TypePropAccessNode) -> String {
+    fn visit_type_prop_access(&mut self, node: &mut TypePropAccessNode) -> String {
         let object = node.object.accept(self);
         let member = &node.member;
         format!("{}.{}", object, member)
