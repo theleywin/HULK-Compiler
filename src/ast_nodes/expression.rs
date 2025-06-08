@@ -1,18 +1,18 @@
 use super::binary_op::BinaryOpNode;
-use super::function_call::FunctionCallNode;
-use super::unary_op::UnaryOpNode;
-use super::if_else::IfElseNode;
-use super::literals::{NumberLiteralNode,BooleanLiteralNode,StringLiteralNode,IdentifierNode};
-use super::while_loop::WhileNode;
 use super::block::{BlockNode, ExpressionList};
-use super::for_loop::ForNode;
-use super::let_in::{LetInNode,Assignment};
 use super::destructive_assign::DestructiveAssignNode;
+use super::for_loop::ForNode;
+use super::function_call::FunctionCallNode;
+use super::if_else::IfElseNode;
+use super::let_in::{Assignment, LetInNode};
+use super::literals::{BooleanLiteralNode, IdentifierNode, NumberLiteralNode, StringLiteralNode};
+use super::unary_op::UnaryOpNode;
+use super::while_loop::WhileNode;
+use crate::ast_nodes::type_instance::TypeInstanceNode;
 use crate::ast_nodes::type_member_access::{TypeFunctionAccessNode, TypePropAccessNode};
 use crate::tokens::OperatorToken;
 use crate::visitor::accept::Accept;
 use crate::visitor::visitor_trait::Visitor;
-use crate::ast_nodes::type_instance::TypeInstanceNode;
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
@@ -43,7 +43,7 @@ impl Expression {
         Expression::Boolean(BooleanLiteralNode::new(value))
     }
 
-    pub fn new_string(value: String ) -> Self {
+    pub fn new_string(value: String) -> Self {
         Expression::Str(StringLiteralNode::new(&value))
     }
 
@@ -59,7 +59,12 @@ impl Expression {
         Expression::WhileLoop(WhileNode::new(condition, body))
     }
 
-    pub fn new_for_loop(variable: String, start: Expression, end: Expression, body: Expression) -> Self {
+    pub fn new_for_loop(
+        variable: String,
+        start: Expression,
+        end: Expression,
+        body: Expression,
+    ) -> Self {
         Expression::ForLoop(ForNode::new(variable, start, end, body))
     }
 
@@ -75,7 +80,11 @@ impl Expression {
         Expression::UnaryOp(UnaryOpNode::new(operator, operand))
     }
 
-    pub fn new_if_else(condition: Expression,then_expression: Expression,else_expression: Expression) -> Self {
+    pub fn new_if_else(
+        condition: Expression,
+        then_expression: Expression,
+        else_expression: Expression,
+    ) -> Self {
         Expression::IfElse(IfElseNode::new(condition, then_expression, else_expression))
     }
 
@@ -98,11 +107,10 @@ impl Expression {
     pub fn new_type_prop_access(object: Expression, member: String) -> Self {
         Expression::TypePropAccess(TypePropAccessNode::new(object, member))
     }
-
 }
 
 impl Accept for Expression {
-    fn accept<V: Visitor<T>,T>(&self, visitor: &mut V) -> T {
+    fn accept<V: Visitor<T>, T>(&self, visitor: &mut V) -> T {
         match self {
             Expression::Number(node) => visitor.visit_literal_number(node),
             Expression::Boolean(node) => visitor.visit_literal_boolean(node),
