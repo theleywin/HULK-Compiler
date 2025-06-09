@@ -62,12 +62,13 @@ impl Visitor<String> for CodeGenerator {
     }
 
     fn visit_binary_op(&mut self, node: &BinaryOpNode) -> String {
+        let left_val = node.left.accept(self);
+        let right_val = node.right.accept(self);
         gen_binary_op(
             &mut self.context,
-            &node.left,
+            left_val,
             node.operator.clone(),
-            &node.right,
-            self,
+            right_val,
         )
     }
 
@@ -104,8 +105,8 @@ impl Visitor<String> for CodeGenerator {
     }
 
     fn visit_unary_op(&mut self, node: &UnaryOpNode) -> String {
-        let context = &mut self.context;
-        gen_unary_op(context, node.operator.clone(), &node.operand, self)
+        let operand_val = node.operand.accept(self);
+        gen_unary_op(&mut self.context, node.operator.clone(), operand_val)
     }
 
     fn visit_if_else(&mut self, _node: &IfElseNode) -> String {

@@ -1,8 +1,5 @@
 use super::context::CodeGenContext;
-use crate::ast_nodes::expression::Expression;
 use crate::tokens::OperatorToken;
-use crate::visitor::accept::Accept;
-use crate::visitor::visitor_trait::Visitor;
 
 pub fn gen_number(_context: &mut CodeGenContext, value: &str) -> String {
     // Handle integers and floats properly
@@ -15,16 +12,12 @@ pub fn gen_number(_context: &mut CodeGenContext, value: &str) -> String {
     }
 }
 
-pub fn gen_binary_op<V: Visitor<String>>(
+pub fn gen_binary_op(
     context: &mut CodeGenContext,
-    left: &Expression,
+    left_val: String,
     op: OperatorToken,
-    right: &Expression,
-    visitor: &mut V,
+    right_val: String,
 ) -> String {
-    let left_val = left.accept(visitor);
-    let right_val = right.accept(visitor);
-
     let opcode: &'static str = match op {
         OperatorToken::PLUS => "fadd",
         OperatorToken::MINUS => "fsub",
@@ -42,14 +35,12 @@ pub fn gen_binary_op<V: Visitor<String>>(
 }
 
 // Similarly update gen_unary_op to be generic
-pub fn gen_unary_op<V: Visitor<String>>(
+pub fn gen_unary_op(
     context: &mut CodeGenContext,
     op: OperatorToken,
-    operand: &Expression,
-    visitor: &mut V,
+    operand_val: String,
 ) -> String {
     if op == OperatorToken::MINUS {
-        let operand_val = operand.accept(visitor);
         let temp = context.new_temp();
         context.add_line(format!("{} = fsub double 0.0, {}", temp, operand_val));
         temp
