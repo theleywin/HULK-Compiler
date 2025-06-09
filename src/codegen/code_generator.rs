@@ -42,11 +42,11 @@ impl CodeGenerator {
         let mut body_context = CodeGenContext::new();
         std::mem::swap(&mut self.context, &mut body_context);
         self.generate_body(program);
-        
+
         // Get globals and body code separately
         let globals = self.context.take_globals();
         let body_code = self.context.take_body();
-        
+
         std::mem::swap(&mut self.context, &mut body_context);
 
         // Add globals to module
@@ -64,15 +64,13 @@ impl CodeGenerator {
         for statement in &mut program.statements {
             if let Statement::StatementExpression(expr) = statement {
                 let result = expr.accept(self);
-                
+
                 // Depending on the type, print appropriately
                 if self.context.is_bool(&result) {
                     // Convert boolean (i1) to i32 for printf with %d
                     let i32_temp = self.context.new_temp();
-                    self.context.add_line(format!(
-                        "{} = zext i1 {} to i32",
-                        i32_temp, result
-                    ));
+                    self.context
+                        .add_line(format!("{} = zext i1 {} to i32", i32_temp, result));
                     llvm_utils::generate_printf(&mut self.context, &i32_temp, "%d");
                 } else if self.context.is_string(&result) {
                     llvm_utils::generate_printf(&mut self.context, &result, "%s");
@@ -109,7 +107,8 @@ impl Visitor<String> for CodeGenerator {
         let value = gen_boolean(&mut self.context, node.value);
         let temp = self.context.new_temp();
         // Store as i1
-        self.context.add_line(format!("{} = add i1 {}, 0", temp, value));
+        self.context
+            .add_line(format!("{} = add i1 {}, 0", temp, value));
         self.context.add_bool_var(temp.clone());
         temp
     }

@@ -1,13 +1,14 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 
 pub struct CodeGenContext {
-    code: Vec<String>,
-    globals: Vec<String>,
-    temp_counter: usize,
-    bool_vars: HashSet<String>,
-    string_vars: HashSet<String>,
-    string_literals: HashMap<String, String>, // Maps string value to global name
-    next_string_id: usize,
+    pub code: Vec<String>,
+    pub globals: Vec<String>,
+    pub temp_counter: usize,
+    pub bool_vars: HashSet<String>,
+    pub string_vars: HashSet<String>,
+    pub string_literals: HashMap<String, String>,
+    pub next_string_id: usize,
+    pub runtime_functions: HashSet<String>,
 }
 
 impl Default for CodeGenContext {
@@ -20,6 +21,7 @@ impl Default for CodeGenContext {
             string_vars: HashSet::new(),
             string_literals: HashMap::new(),
             next_string_id: 0,
+            runtime_functions: HashSet::new(),
         }
     }
 }
@@ -97,5 +99,9 @@ impl CodeGenContext {
         self.globals.push(global);
         self.string_literals.insert(value.to_string(), name.clone());
         name
+    }
+
+    pub fn add_global_declaration(&mut self, decl: String) {
+        self.globals.push(decl);
     }
 }

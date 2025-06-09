@@ -41,3 +41,12 @@ pub fn generate_main_wrapper(output: &mut Vec<String>, body: &[String]) {
     output.push("  ret i32 0".into());
     output.push("}".into());
 }
+
+// Add this new function for runtime declarations
+pub fn generate_runtime_declarations(output: &mut Vec<String>) {
+    output.push("".into());
+    output.push("; Runtime function declarations".into());
+    output.push("declare double @fmod(double, double)".into());
+    output.push("declare double @pow(double, double)".into());
+    output.push("declare i8* @concat(i8*, i8*)".into());
+}

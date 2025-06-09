@@ -13,8 +13,10 @@ use crate::codegen::CodeGenerator;
 
 lalrpop_mod!(pub parser);
 
+const RUNTIME_C: &str = "runtime.c";
+
 fn main() {
-    let input = "5+5/(1-2) / 45";
+    let input = "5%5";
 
     let mut expr = parser::ProgramParser::new().parse(input).unwrap();
 
@@ -41,21 +43,41 @@ fn main() {
 
             // Compile and run
             println!("\nCompiling and running...");
-            let status = std::process::Command::new("clang")
-                .args(&["output.ll", "-o", "output"])
+
+            // Compile with runtime.c and math library
+            let compile_status = std::process::Command::new("clang")
+                .args(&["output.ll", RUNTIME_C, "-lm", "-o", "output"])
                 .status()
                 .expect("Failed to compile with clang");
 
-            if status.success() {
-                let output = std::process::Command::new("./output")
+            if compile_status.success() {
+                // Run the compiled program
+                let run_output = std::process::Command::new("./output")
                     .output()
                     .expect("Failed to run program");
-                println!(
-                    "\x1b[34mProgram output:\n{}\x1b[0m",
-                    String::from_utf8_lossy(&output.stdout)
-                );
+
+                if run_output.status.success() {
+                    println!(
+                        "\x1b[34mProgram output:\n{}\x1b[0m",
+                        String::from_utf8_lossy(&run_output.stdout)
+                    );
+                } else {
+                    eprintln!(
+                        "\x1b[31mProgram execution failed:\n{}\x1b[0m",
+                        String::from_utf8_lossy(&run_output.stderr)
+                    );
+                }
             } else {
-                eprintln!("\x1b[31mCompilation failed\x1b[0m");
+                // Capture clang error output
+                let clang_output = std::process::Command::new("clang")
+                    .args(&["output.ll", RUNTIME_C, "-lm", "-o", "output"])
+                    .output()
+                    .expect("Failed to run clang");
+
+                eprintln!(
+                    "\x1b[31mCompilation failed:\n{}\x1b[0m",
+                    String::from_utf8_lossy(&clang_output.stderr)
+                );
             }
         }
         Err(errors) => {
@@ -69,8 +91,5 @@ fn main() {
 
     println!("");
     // Print AST in blue
-    println!(
-        "\x1b[34mAST:\n{}\x1b[0m",
-        printer.print_program(&mut expr)
-    );
+    println!("\x1b[34mAST:\n{}\x1b[0m", printer.print_program(&mut expr));
 }
