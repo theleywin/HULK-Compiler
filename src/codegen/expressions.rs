@@ -2,15 +2,15 @@ use super::context::CodeGenContext;
 use crate::tokens::OperatorToken;
 
 pub fn gen_number(_context: &mut CodeGenContext, value: &str) -> String {
-    // Handle integers and floats properly
     if let Ok(int_value) = value.parse::<i64>() {
-        format!("{}", int_value)
+        format!("{}.0", int_value)
     } else if let Ok(float_value) = value.parse::<f64>() {
-        format!("{:?}", float_value) // Use debug formatting for floats
+        format!("{}", float_value)
     } else {
         panic!("Invalid number literal: {}", value)
     }
 }
+
 
 pub fn gen_binary_op(
     context: &mut CodeGenContext,

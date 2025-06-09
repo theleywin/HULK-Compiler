@@ -13,7 +13,7 @@ use crate::codegen::CodeGenerator;
 lalrpop_mod!(pub parser);
 
 fn main() {
-    let input = "5+5-3";
+    let input = "5+5-3/(2-1) * 7";
 
     let expr = parser::ProgramParser::new().parse(input).unwrap();
     let mut printer = PrinterVisitor;

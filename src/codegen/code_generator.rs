@@ -34,16 +34,26 @@ impl CodeGenerator {
     }
 
     pub fn generate(&mut self, program: &Program) -> String {
-        generate_header(&mut self.context);
-        declare_printf(&mut self.context);
-        self.context.add_line("".into());
+        // 1) Module header + declarations
+        let mut module_code: Vec<String> = vec![];
+        generate_header(&mut module_code);
+        declare_printf(&mut module_code);
+        module_code.push("".into());
 
-        // Generate body directly in main context
+        // 2) Build the body in its own context
+        let mut body_context = CodeGenContext::new();
+        // swap it in
+        std::mem::swap(&mut self.context, &mut body_context);
         self.generate_body(program);
+        let body_code = self.context.take_code();
+        // restore original (empty) context if you need it later:
+        std::mem::swap(&mut self.context, &mut body_context);
 
-        let code = self.context.take_code();
-        generate_main_wrapper(&mut self.context, &code);
-        self.context.take_code().join("\n")
+        // 3) Emit `define @main` into module_code
+        generate_main_wrapper(&mut module_code, &body_code);
+
+        // 4) Join and return
+        module_code.join("\n")
     }
 
     fn generate_body(&mut self, program: &Program) {

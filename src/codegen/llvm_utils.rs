@@ -1,9 +1,8 @@
 use super::context::CodeGenContext;
 
-pub fn declare_printf(context: &mut CodeGenContext) {
-    context
-        .add_line("@.str = private unnamed_addr constant [4 x i8] c\"%f\\0A\\00\", align 1".into());
-    context.add_line("declare i32 @printf(i8* nocapture readonly, ...) nounwind".into());
+pub fn declare_printf(output: &mut Vec<String>) {
+    output.push("@.str = private unnamed_addr constant [4 x i8] c\"%f\\0A\\00\", align 1".into());
+    output.push("declare i32 @printf(i8* nocapture readonly, ...) nounwind".into());
 }
 
 pub fn generate_printf(context: &mut CodeGenContext, value: &str) {
@@ -14,18 +13,22 @@ pub fn generate_printf(context: &mut CodeGenContext, value: &str) {
     ));
 }
 
-pub fn generate_header(context: &mut CodeGenContext) {
-    context.add_line("; ModuleID = 'hulk'".into());
-    context.add_line("target datalayout = \"e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128\"".into());
-    context.add_line("target triple = \"x86_64-pc-linux-gnu\"".into());
+pub fn generate_header(output: &mut Vec<String>) {
+    output.push("; ModuleID = 'hulk'".into());
+    output.push("target datalayout = \"e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128\"".into());
+    output.push("target triple = \"x86_64-pc-linux-gnu\"".into());
 }
 
-pub fn generate_main_wrapper(context: &mut CodeGenContext, body: &[String]) {
-    context.add_line("define i32 @main() {".into());
-    context.add_line("entry:".into());
+/// Write the main function (no leading spaces in empty or label lines).
+pub fn generate_main_wrapper(output: &mut Vec<String>, body: &[String]) {
+    output.push("define i32 @main() {".into());
+    output.push("entry:".into());
     for line in body {
-        context.add_line(line.clone());
+        // if these lines already have no leading spaces, just push them.
+        // if you want to indent instructions, prefix with two spaces here:
+        output.push(format!("  {}", line));
     }
-    context.add_line("ret i32 0".into());
-    context.add_line("}".into());
+    output.push("  ret i32 0".into());
+    output.push("}".into());
 }
+
