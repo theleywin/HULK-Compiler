@@ -12,211 +12,278 @@ use crate::ast_nodes::function_def::{FunctionDefNode,FunctionParams};
 use crate::ast_nodes::block::ExpressionList;
 use crate::tokens::Token;
 use lalrpop_util::ParseError;
-
-pub type ParseError = lalrpop_util::ParseError<usize, Token, &'static str>;
-
-pub fn format_error(error: ParseError) -> String {
-    match error {
-        ParseError::InvalidToken { location } => 
-            format!("Token inválido en posición {}", location),
-        ParseError::UnrecognizedToken { token: Some((l, token, r)), expected } => 
-            format!("Token inesperado '{}' en posición {}. Se esperaba: {}", token, l, expected.join(", ")),
-        ParseError::ExtraToken { token: (l, token) } => 
-            format!("Token extra '{}' en posición {}", token, l),
-        ParseError::User { error } => 
-            format!("Error de sintaxis: {}", error),
-        _ => format!("Error desconocido: {:?}", error)
-    }
-}
+use crate::parser::{extract_identifier, extract_number, extract_string, extract_signature, extract_operator, format_error};
 
 grammar;
 
-pub Program: Program = {
+pub Program: Result<Program, String> = {
     <v:(<Statement> Semicolon)*> <last:Statement?> => {
-        let mut vec = v;
+        let mut vec = v.into_iter().collect::<Result<Vec<_>, _>>()?;
         if let Some(e) = last {
-            vec.push(e);
+            vec.push(e?);
         }
-        Program{statements:vec,}
+        Ok(Program{statements:vec})
     }
 }
 
-Statement: Statement = {
-    FunctionFullDef => Statement::new_function_def(<>),
-    FunctionArrowDef => Statement::new_function_def(<>),
-    Expr => Statement::new_expression(<>)
+Statement: Result<Statement, String> = {
+    FunctionFullDef => Ok(Statement::new_function_def(<>?)),
+    FunctionArrowDef => Ok(Statement::new_function_def(<>?)),
+    Expr => Ok(Statement::new_expression(<>?))
 }
 
-FunctionArrowDef: FunctionDefNode = {
+FunctionArrowDef: Result<FunctionDefNode, String> = {
     Function <name:Identifier> LParen <params:IdentifierList> RParen Colon <s:Signature> Arrow <body:Expr> => {
-        FunctionDefNode::new_expr(name,params,s,body)
+        let name_str = extract_identifier(name)?;
+        let signature_str = extract_signature(s)?;
+        FunctionDefNode::new_expr(name_str, params?, signature_str, body?)
     },
     Function <name:Identifier> LParen RParen Colon <s:Signature> Arrow <body:Expr> => {
-        FunctionDefNode::new_expr(name,vec![],s,body)
+        let name_str = extract_identifier(name)?;
+        let signature_str = extract_signature(s)?;
+        FunctionDefNode::new_expr(name_str, vec![], signature_str, body?)
     }
 };
 
-FunctionFullDef: FunctionDefNode = {
+FunctionFullDef: Result<FunctionDefNode, String> = {
     Function <name:Identifier> LParen <params:IdentifierList> RParen Colon <s:Signature> <body:CodeBlock> => {
-        FunctionDefNode::new_expr(name,params,s,body)
+        let name_str = extract_identifier(name)?;
+        let signature_str = extract_signature(s)?;
+        FunctionDefNode::new_expr(name_str, params?, signature_str, body?)
     },
     Function <name:Identifier> LParen RParen Colon <s:Signature> <body:CodeBlock> => {
-        FunctionDefNode::new_expr(name,vec![],s,body)
+        let name_str = extract_identifier(name)?;
+        let signature_str = extract_signature(s)?;
+        FunctionDefNode::new_expr(name_str, vec![], signature_str, body?)
+    },
+    Function <name:Identifier> LParen <params:IdentifierList> => {
+        Err("Falta ')' después de los parámetros".into())
+    },
+    Function <name:Identifier> LParen <params:IdentifierList> Colon <s:Signature> => {
+        Err("Falta cuerpo de la función".into())
+    },
+    Function <name:Identifier> LParen RParen => {
+        Err("Falta ':' después de la lista de parámetros".into())
+    },
+    Function <name:Identifier> LParen RParen Colon <s:Signature> => {
+        Err("Falta cuerpo de la función".into())
     }
 };
 
-Expr: Expression = { 
+Expr: Result<Expression, String> = { 
     DestructiveAssignExpr,
     LogicalOrExpr
 };
 
-DestructiveAssignExpr: Expression = {
+DestructiveAssignExpr: Result<Expression, String> = {
     <id:Identifier> DestructiveAssignOp <e:Expr> => {
-        Expression::new_destructive_assign(id, e)
+        let id_str = extract_identifier(id)?;
+        Ok(Expression::new_destructive_assign(id_str, e?))
+    },
+    
+    <id:Identifier> DestructiveAssignOp => {
+        Err("Falta expresión después de ':='".into())
     }
 };
 
-ExprsList: ExpressionList = {
+ExprsList: Result<ExpressionList, String> = {
     <v:(<Expr> Semicolon)*> <last:Expr?> => {
-        let mut vec = v;
+        // Convertimos el vector de Results en un Result de vector
+        let mut vec: Vec<Expression> = v.into_iter().collect::<Result<Vec<_>, _>>()?;
+        
         if let Some(e) = last {
-            vec.push(e);
+            vec.push(e?);
         }
-        ExpressionList::new(vec)
+        
+        Ok(ExpressionList::new(vec))
     }
 };
 
-LogicalOrExpr: Expression = {
-    LogicalOrExpr LogicalOrOp LogicalAndExpr => Expression::new_binary_op(<>),
+LogicalOrExpr: Result<Expression, String> = {
+    <l:LogicalOrExpr> <op:LogicalOrOp> <r:LogicalAndExpr> => {
+        let op_token = extract_operator(op)?;
+        l?.new_binary_op(op_token, r?)
+    },
     LogicalAndExpr
 };
 
-LogicalAndExpr: Expression = {
-    LogicalAndExpr LogicalAndOp EqualityExpr => Expression::new_binary_op(<>),
+LogicalAndExpr: Result<Expression, String> = {
+    <l:LogicalAndExpr> <op:LogicalAndOp> <r:EqualityExpr> => {
+        let op_token = extract_operator(op)?;
+        l?.new_binary_op(op_token, r?)
+    },
     EqualityExpr
 };
 
-EqualityExpr: Expression = {
-    EqualityExpr EqualityOp ComparisonExpr => Expression::new_binary_op(<>),
-    ComparisonExpr,
+EqualityExpr: Result<Expression, String> = {
+    <l:EqualityExpr> <op:EqualityOp> <r:ComparisonExpr> => {
+        let op_token = extract_operator(op)?;
+        l?.new_binary_op(op_token, r?)
+    },
+    ComparisonExpr
 };
 
-ComparisonExpr: Expression = {
-    ComparisonExpr ComparisonOp TermExpr => Expression::new_binary_op(<>),
-    TermExpr,
+ComparisonExpr: Result<Expression, String> = {
+    <l:ComparisonExpr> <op:ComparisonOp> <r:TermExpr> => {
+        let op_token = extract_operator(op)?;
+        l?.new_binary_op(op_token, r?)
+    },
+    TermExpr
 };
 
-TermExpr: Expression = {
-    TermExpr TermOp FactorExpr => Expression::new_binary_op(<>),
-    FactorExpr,
+TermExpr: Result<Expression, String> = {
+    <l:TermExpr> <op:TermOp> <r:FactorExpr> => {
+        let op_token = extract_operator(op)?;
+        l?.new_binary_op(op_token, r?)
+    },
+    FactorExpr
 };
 
-FactorExpr: Expression = {
-    FactorExpr FactorOp ExponentExpr => Expression::new_binary_op(<>),
-    ExponentExpr,
+FactorExpr: Result<Expression, String> = {
+    <l:FactorExpr> <op:FactorOp> <r:ExponentExpr> => {
+        let op_token = extract_operator(op)?;
+        l?.new_binary_op(op_token, r?)
+    },
+    ExponentExpr
 };
 
-ExponentExpr: Expression = {
-    UnaryExpr PowOp ExponentExpr => Expression::new_binary_op(<>),
-    UnaryExpr,
+ExponentExpr: Result<Expression, String> = {
+    <l:UnaryExpr> <op:PowOp> <r:ExponentExpr> => {
+        let op_token = extract_operator(op)?;
+        l?.new_binary_op(op_token, r?)
+    },
+    UnaryExpr
 };
 
-UnaryExpr: Expression = {
-    UnaryOp UnaryExpr => Expression::new_unary_op(<>),
-    PrimaryExpr,
+UnaryExpr: Result<Expression, String> = {
+    <op:UnaryOp> <e:UnaryExpr> => {
+        let op_token = extract_operator(op)?;
+        Ok(Expression::new_unary_op(op_token, e?))
+    },
+    PrimaryExpr
 };
 
-IdentifierList: Vec<FunctionParams> = {
+IdentifierList: Result<Vec<FunctionParams>, String> = {
     <first:Identifier> Colon <s:Signature> <rest:(Comma Identifier Colon Signature)*> => {
-        let mut vec = vec![FunctionParams::new(first,s)];
-        for (_, id,_,signature) in rest {
-            vec.push(FunctionParams::new(id,signature));
+        let first_str = extract_identifier(first)?;
+        let signature_str = extract_signature(s)?;
+        let mut vec = vec![FunctionParams::new(first_str, signature_str)];
+        
+        for (_, id, _, sign) in rest {
+            let id_str = extract_identifier(id)?;
+            let sign_str = extract_signature(sign)?;
+            vec.push(FunctionParams::new(id_str, sign_str));
         }
-        vec
+        Ok(vec)
+    },
+    <first:Identifier> Colon => Err("Falta firma después de ':'".into()),
+    <first:Identifier> => Err("Falta ':' después del identificador".into())
+};
+
+Assignment: Result<Assignment, String> = {
+    <id:Identifier> Assign <e:Expr> => {
+        let id_str = extract_identifier(id)?;
+        Ok(Assignment::new(id_str, e?))
+    },
+    <id:Identifier> Assign => {
+        Err("Falta expresión después de '='".into())
     }
 };
 
-Assignment: Assignment = {
-    <id:Identifier> Assign <e:Expr> => Assignment::new(id,e),
-}
-
-AssignmentList: Vec<Assignment> = {
-    <l:AssignmentList> "," <r:Assignment> => {
-        let mut l = l;
-        l.push(r);
-        l
+AssignmentList: Result<Vec<Assignment>, String> = {
+    <first:Assignment> <rest:(<Comma> <Assignment>)*> => {
+        let mut assignments = vec![first?];
+        for (_, assignment) in rest {
+            assignments.push(assignment?);
+        }
+        Ok(assignments)
     },
-    <r:Assignment> => {
-        let mut v = Vec::new();
-        v.push(r);
-        v
-    },
-}
+    // Manejar lista vacía si es necesario
+    => Ok(Vec::new())
+};
 
-ArgList: Vec<Expression> = {
-    // Handle non-empty arguments
+ArgList: Result<Vec<Expression>, String> = {
     <first:Expr> <rest:(<Comma> <Expr>)*> => {
-        let mut args = vec![first];
+        let mut args = vec![first?];
         for (_, expr) in rest {
-            args.push(expr);
+            args.push(expr?);
         }
-        args
+        Ok(args)
     },
-    // Handle empty arguments (no parameters)
-    => Vec::new()
+    => Ok(Vec::new())
 };
 
-CodeBlock: Expression = {
-    LBrace <body:ExprsList> RBrace => Expression::new_code_block(body),
-}
-
-LetIn: Expression = {
-    Let <a:AssignmentList> In <body:PrimaryExpr> => Expression::new_let_in(a,body),
+CodeBlock: Result<Expression, String> = {
+    LBrace <body:ExprsList> RBrace => Ok(Expression::new_code_block(body?)),
+    LBrace <body:ExprsList> => Err("Falta '}' al final del bloque de código".into())
 };
 
-WhileLoop: Expression = {
-    While LParen <condition:Expr> RParen <body:PrimaryExpr> => Expression::new_while_loop(condition,body),
-};
-
-//Maybe catch these errors in a different place (Like Semantic Analysis)
-ForLoop: Expression = {
-    For LParen <id:Identifier> In <call:PrimaryExpr> RParen <body:PrimaryExpr> => {
-        if let Expression::FunctionCall(func_call) = call {
-            if func_call.function_name == "range" && func_call.arguments.len() == 2 {
-                let mut args = func_call.arguments;
-                let start = args.remove(0);
-                let end = args.remove(0);
-                
-                Expression::new_for_loop(id, start, end, body)
-            } else {
-                panic!("For loop must use `range` with exactly two arguments");
-            }
-        } else {
-            panic!("For loop iterable must be a `range` function call");
-        }
+LetIn: Result<Expression, String> = {
+    Let <a:AssignmentList> In <body:PrimaryExpr> => {
+        Ok(Expression::new_let_in(a?, body?))
+    },
+    Let <a:AssignmentList> => {
+        Err("Falta 'in' en expresión let".into())
     }
 };
 
-IfElse: Expression = {
-    If LParen <condition:Expr> RParen <if_body:PrimaryExpr> Else <else_body:PrimaryExpr> => {
-        Expression::new_if_else(condition,if_body,else_body)
+WhileLoop: Result<Expression, String> = {
+    While LParen <condition:Expr> RParen <body:PrimaryExpr> => {
+        Ok(Expression::new_while_loop(condition?, body?))
     },
-}
-
-PrimaryExpr: Expression = {
-    WhileLoop,
-    ForLoop,
-    <name:Identifier> LParen <args:ArgList> RParen => Expression::new_function_call(name, args),
-    Num => Expression::new_number(<>),
-    Str => Expression::new_string(<>),
-    Identifier => Expression::new_identifier(<>),
-    LParen <Expr> RParen => <>,
-    LetIn,
-    True => Expression::new_boolean(true),
-    False => Expression::new_boolean(false),
-    CodeBlock,
-    IfElse,
+    While LParen <condition:Expr> => Err("Falta ')' o cuerpo en bucle while".into()),
+    While => Err("Falta condición en bucle while".into())
 };
+
+
+ForLoop: Result<Expression, String> = {
+    For LParen <id:Identifier> In <call:PrimaryExpr> RParen <body:PrimaryExpr> => {
+        let id_str = extract_identifier(id)?;
+        Ok(Expression::new_for_loop(id_str, call?, body?))
+    },
+    For LParen <id:Identifier> In => Err("Falta iterable en bucle for".into()),
+    For LParen <id:Identifier> => Err("Falta 'in' en bucle for".into()),
+    For LParen => Err("Falta identificador en bucle for".into()),
+    For => Err("Falta '(' después de 'for'".into())
+};
+
+IfElse: Result<Expression, String> = {
+    If LParen <condition:Expr> RParen <if_body:PrimaryExpr> Else <else_body:PrimaryExpr> => {
+        Ok(Expression::new_if_else(condition?, if_body?, else_body?))
+    },
+    If LParen <condition:Expr> RParen <if_body:PrimaryExpr> => {
+        Err("Falta 'else' en expresión if".into())
+    },
+    If LParen <condition:Expr> => Err("Falta ')' o cuerpo en expresión if".into())
+};
+
+PrimaryExpr: Result<Expression, String> = {
+    CodeBlock?,    
+    WhileLoop?,
+    ForLoop?,
+    <name:Identifier> LParen <args:ArgList> RParen => {
+        let name_str = extract_identifier(name)?;
+        Ok(Expression::new_function_call(name_str, args?))
+    },
+    <n:Num> => {
+        let num_str = extract_number(n)?;
+        Ok(Expression::new_number(num_str))
+    },
+    <s:Str> => {
+        let str_val = extract_string(s)?;
+        Ok(Expression::new_string(str_val))
+    },
+    <id:Identifier> => {
+        let id_str = extract_identifier(id)?;
+        Ok(Expression::new_identifier(id_str))
+    },
+    LParen <e:Expr> RParen => Ok(e?),
+    LetIn?,
+    True => Ok(Expression::new_boolean(true)),
+    False => Ok(Expression::new_boolean(false)),
+    IfElse?
+};
+
 
 Identifier: Token = {
     r"[A-Za-z][A-Za-z_0-9]*" => Token::Identifier(String::from_str(<>).unwrap()),

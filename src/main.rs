@@ -15,32 +15,9 @@ fn main() {
         if ( a > b ) {
             5 ;
         } else {
-            SumLet( a, b ) ;
+            6 ;
         }
     } ;
-    for ( i in range(1,10) ) {
-        if ( i > 5 ) {
-            i;
-        } else {
-            \"hola\";
-        }
-    };
-    let x = 5 in ( x + x ) ;
-    let y = 4 , z = 3 in ( x + y + z ) ;
-    while ( !(3 < 4) ) { 
-        !\"hola\" ;
-    };
-
-    let x = SumLet( 5, 5) in x ;
-
-    function SumLet (a: Number , b : Number) : Object {
-        if ( a > b ) {
-            5 ;
-        } else {
-            \"hola\" ;
-        }
-    } ;
-
     ";
 
     let expr = parser::ProgramParser::new().parse(input).unwrap();

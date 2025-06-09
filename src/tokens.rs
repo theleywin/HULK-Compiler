@@ -79,7 +79,7 @@ pub enum DelimiterToken {
 }
 
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Token {
     Keyword(KeywordToken),
     Operator(OperatorToken),
