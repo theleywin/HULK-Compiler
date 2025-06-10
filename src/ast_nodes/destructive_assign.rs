@@ -2,7 +2,7 @@ use crate::types_tree::tree_node::TypeNode;
 
 use super::expression::Expression;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct DestructiveAssignNode {
     pub identifier: Box<Expression>,
     pub expression: Box<Expression>,

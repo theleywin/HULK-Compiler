@@ -2,7 +2,7 @@ use core::str;
 
 use crate::types_tree::tree_node::TypeNode;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct NumberLiteralNode {
     pub value: f64,
     pub node_type: Option<TypeNode>,
@@ -19,7 +19,7 @@ impl NumberLiteralNode {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct BooleanLiteralNode {
     pub value: bool,
     pub node_type: Option<TypeNode>,
@@ -36,7 +36,7 @@ impl BooleanLiteralNode {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct StringLiteralNode {
     pub value: String,
     pub node_type: Option<TypeNode>,
@@ -53,7 +53,7 @@ impl StringLiteralNode {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct IdentifierNode {
     pub value: String,
     pub node_type: Option<TypeNode>,

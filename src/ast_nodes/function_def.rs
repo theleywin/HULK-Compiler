@@ -17,7 +17,7 @@ impl FunctionParams {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct FunctionDefNode {
     pub name: String,
     pub params: Vec<FunctionParams>,

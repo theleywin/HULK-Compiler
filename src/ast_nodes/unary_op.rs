@@ -1,7 +1,7 @@
 use crate::{tokens::OperatorToken, types_tree::tree_node::TypeNode};
 use super::expression::Expression;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct UnaryOpNode {
     pub operator: OperatorToken,
     pub operand: Box<Expression>,
