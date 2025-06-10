@@ -1,5 +1,3 @@
-// src/codegen/visitor_codegen.rs
-
 use super::code_generator::CodeGenerator;
 use super::context::Type;
 use super::expressions::{gen_binary_op, gen_unary_op};
