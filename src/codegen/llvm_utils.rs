@@ -1,11 +1,8 @@
 use super::context::CodeGenContext;
 
 pub fn declare_printf(output: &mut Vec<String>) {
-    // Format string for double: "%f\n"
     output.push("@.str.f = private unnamed_addr constant [4 x i8] c\"%f\\0A\\00\", align 1".into());
-    // Format string for integer: "%d\n"
     output.push("@.str.d = private unnamed_addr constant [4 x i8] c\"%d\\0A\\00\", align 1".into());
-    // Format string for string: "%s\n"
     output.push("@.str.s = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\", align 1".into());
     output.push("declare i32 @printf(i8* nocapture readonly, ...) nounwind".into());
 }
@@ -42,7 +39,6 @@ pub fn generate_main_wrapper(output: &mut Vec<String>, body: &[String]) {
     output.push("}".into());
 }
 
-// Add this new function for runtime declarations
 pub fn generate_runtime_declarations(output: &mut Vec<String>) {
     output.push("".into());
     output.push("; Runtime function declarations".into());

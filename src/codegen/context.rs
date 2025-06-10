@@ -1,14 +1,27 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet, HashMap};
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Type {
+    Double,
+    Boolean,
+    String,
+}
 
 pub struct CodeGenContext {
     pub code: Vec<String>,
     pub globals: Vec<String>,
     pub temp_counter: usize,
-    pub bool_vars: HashSet<String>,
-    pub string_vars: HashSet<String>,
+    pub temp_types: HashMap<String, Type>,
     pub string_literals: HashMap<String, String>,
     pub next_string_id: usize,
     pub runtime_functions: HashSet<String>,
+    pub variables: HashMap<String, VariableInfo>,
+}
+
+#[derive(Clone)]
+pub struct VariableInfo {
+    pub temp: String,
+    pub ty: Type,
 }
 
 impl Default for CodeGenContext {
@@ -17,11 +30,11 @@ impl Default for CodeGenContext {
             code: Vec::new(),
             globals: Vec::new(),
             temp_counter: 0,
-            bool_vars: HashSet::new(),
-            string_vars: HashSet::new(),
+            temp_types: HashMap::new(),
             string_literals: HashMap::new(),
             next_string_id: 0,
             runtime_functions: HashSet::new(),
+            variables: HashMap::new(),
         }
     }
 }
@@ -35,10 +48,12 @@ impl CodeGenContext {
         self.code.push(line);
     }
 
-    pub fn new_temp(&mut self) -> String {
+    pub fn new_temp(&mut self, ty: Type) -> String {
         let id = self.temp_counter;
         self.temp_counter += 1;
-        format!("%{}", id)
+        let name = format!("%{}", id);
+        self.temp_types.insert(name.clone(), ty);
+        name
     }
 
     pub fn take_code(&mut self) -> Vec<String> {
@@ -56,24 +71,16 @@ impl CodeGenContext {
         std::mem::take(&mut self.code)
     }
 
+    pub fn get_type(&self, temp: &str) -> Type {
+        *self.temp_types.get(temp).expect("Unknown temporary")
+    }
+
     pub fn is_bool(&self, name: &str) -> bool {
-        self.bool_vars.contains(name)
-    }
-
-    pub fn add_bool_var(&mut self, name: String) {
-        self.bool_vars.insert(name);
-    }
-
-    pub fn remove_bool_var(&mut self, name: &str) {
-        self.bool_vars.remove(name);
+        self.get_type(name) == Type::Boolean
     }
 
     pub fn is_string(&self, name: &str) -> bool {
-        self.string_vars.contains(name)
-    }
-
-    pub fn add_string_var(&mut self, name: String) {
-        self.string_vars.insert(name);
+        self.get_type(name) == Type::String
     }
 
     pub fn add_string_literal(&mut self, value: &str) -> String {
@@ -100,8 +107,20 @@ impl CodeGenContext {
         self.string_literals.insert(value.to_string(), name.clone());
         name
     }
-
+    
     pub fn add_global_declaration(&mut self, decl: String) {
         self.globals.push(decl);
+    }
+    
+    pub fn add_variable(&mut self, name: &str, temp: String, ty: Type) {
+        self.variables.insert(
+            name.to_string(),
+            VariableInfo { temp: temp.clone(), ty }
+        );
+        self.temp_types.insert(temp, ty);
+    }
+    
+    pub fn get_variable(&self, name: &str) -> Option<&VariableInfo> {
+        self.variables.get(name)
     }
 }

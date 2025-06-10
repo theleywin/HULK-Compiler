@@ -16,7 +16,7 @@ lalrpop_mod!(pub parser);
 const RUNTIME_C: &str = "runtime.c";
 
 fn main() {
-    let input = "5%5";
+    let input = "5+5";
 
     let mut expr = parser::ProgramParser::new().parse(input).unwrap();
 
