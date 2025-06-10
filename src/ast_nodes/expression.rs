@@ -14,7 +14,7 @@ use crate::visitor::accept::Accept;
 use crate::visitor::visitor_trait::Visitor;
 use crate::ast_nodes::type_instance::TypeInstanceNode;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub enum Expression {
     Number(NumberLiteralNode),
     Boolean(BooleanLiteralNode),

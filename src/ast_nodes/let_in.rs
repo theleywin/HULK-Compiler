@@ -2,7 +2,7 @@ use crate::types_tree::tree_node::TypeNode;
 
 use super::expression::Expression;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct Assignment { //TODO Add optional Signature Assignment
     pub identifier: String,
     pub expression: Box<Expression>,
@@ -17,7 +17,7 @@ impl Assignment {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct LetInNode {
     pub assignments: Vec<Assignment>,
     pub body: Box<Expression>,

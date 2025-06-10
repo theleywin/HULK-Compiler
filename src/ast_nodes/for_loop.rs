@@ -1,6 +1,6 @@
 use crate::{ast_nodes::expression::Expression, types_tree::tree_node::TypeNode};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct ForNode {
     pub variable: String,
     pub start: Box<Expression>,
