@@ -394,6 +394,7 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                     self.get_built_in_types(&BuiltInTypes::Unknown)
                 }
             },
+            OperatorToken::NEQ |
             OperatorToken::GT |
             OperatorToken::GTE |
             OperatorToken::LT |

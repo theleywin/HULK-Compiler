@@ -35,11 +35,12 @@ fn main() {
         name = name;
         lastname = lastname;
 
-        name(): String => self.name @ \" \" @ self.lastname ;
+        name() : String => name @ lastname ;
+        
     } ;
 
     type Knight inherits Person {
-        name() : Number => 5 + base();
+        name() : String => \"Sir\" @ \" \" @ base();
     } ;
 
     let p = new Knight(\"Diego\", \"Viera\") in p.name() ;
