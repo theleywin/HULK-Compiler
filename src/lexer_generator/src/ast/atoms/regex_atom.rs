@@ -42,6 +42,7 @@ impl PartialEq<char> for RegexAtom {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AtomSet {
     CharSet(CharSet),
     Wildcard,
@@ -75,6 +76,7 @@ impl PartialEq<char> for AtomSet {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MatchableAtom {
     Atom(RegexAtom),
     AtomSet(AtomSet),

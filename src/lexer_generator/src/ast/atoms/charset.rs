@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CharSet {
     pub range: Vec<(char, char)>,
     pub neg: bool,
@@ -36,31 +37,11 @@ impl Display for CharSet {
             repr.push('^');
         }
         for &(start, end) in &self.range {
-            if start == end {
-                repr.push_str(&escape_char(start));
-            } else {
-                repr.push_str(&escape_char(start));
-                repr.push('-');
-                repr.push_str(&escape_char(end));
-            }
+            repr.push(start);
+            repr.push('-');
+            repr.push(end);
         }
         repr.push(']');
         write!(f, "{}", repr)
-    }
-}
-
-fn escape_char(c: char) -> String {
-    match c {
-        '\\' => String::from("\\\\"),
-        '-' => String::from("\\-"),
-        ']' => String::from("\\]"),
-        '^' => String::from("\\^"),
-        '\n' => String::from("\\n"),
-        '\r' => String::from("\\r"),
-        '\t' => String::from("\\t"),
-        c if c.is_control() || (!c.is_ascii() && !c.is_alphanumeric()) => {
-            format!("\\u{{{:X}}}", c as u32)
-        }
-        _ => c.to_string(),
     }
 }
