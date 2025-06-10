@@ -3,7 +3,7 @@ use crate::types_tree::tree_node::TypeNode;
 use super::expression::Expression;
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct IfElseNode {
     pub condition: Box<Expression>,
     pub then_expression: Box<Expression>,

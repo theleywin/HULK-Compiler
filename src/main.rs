@@ -11,53 +11,39 @@ lalrpop_mod!(pub parser);
 
 fn main() {
     let input = "
-    type Point (x: Number, y: Number) {
+    type Point(x : Number, y : Number) {
         x = x;
         y = y;
 
         getX() : Number => self.x;
         getY() : Number => self.y;
 
-        setX(x: Number) : Number => 5 := x ;
+        setX(x: Number) : Number =>  self.x := x ;
         setY(y: Number) : Number => self.y := y ;
     }; 
 
-    type PolarPoint(phi: Number, rho: Number) inherits Point(rho * sin(phi), rho * cos(phi)) {
-        rho() : Number => sqrt(getX() ^ 2 + getY() ^ 2);
+    let x = new Point(4,5) in ( x.getX() + x.getY() ) ;
+
+    type PolarPoint(rho: Number, phi: Number, lol: Number) inherits Point(rho * phi, rho * phi) {
+        rho() : Number => self.getX() ^ 2 + self.getY() ^ 2;
     };
 
-    let x = new Point(3, 4) in x.getX() + x.getY() + x.prop ;
+    let x = new PolarPoint(4,5,7) in ( x.getX() + x.getY() ) ;
+    let x = new Point(4,5) in ( x.getX() + x.getY() ) ;
 
-    function SumPro ( a: Number , b : Number ) : Number {
-        if ( a > b ) {
-            5 ;
-        } else {
-            SumLet( a, b ) ;
-        }
+    type Person (name : String , lastname: String) {
+        name = name;
+        lastname = lastname;
+
+        name() : String => name @ lastname ;
+        
     } ;
 
-    for ( i in range(1,10) ) {
-        if ( i > 5 ) {
-            i;
-        } else {
-            \"hola\";
-        }
-    };
-    let x = 5 in ( x + x ) ;
-    let y = 4 , z = 3 in ( x + y + z ) ;
-    while ( !(3 < 4) ) { 
-        !\"hola\" ;
-    };
-
-    let x = SumLet( 5, 5) in x ;
-
-    function SumLet (a: Number , b : Number) : Object {
-        if ( a > b ) {
-            5 ;
-        } else {
-            \"hola\" ;
-        }
+    type Knight inherits Person {
+        name() : String => \"Sir\" @ \" \" @ base();
     } ;
+
+    let p = new Knight(\"Diego\", \"Viera\") in p.name() ;
 
     ";
 
