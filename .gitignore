@@ -4,3 +4,9 @@ target/
 # Ignore output files
 output
 output.ll
+
+# Ignore script.hulk file
+script.hulk
+
+# Ignore hulk folder
+hulk/
