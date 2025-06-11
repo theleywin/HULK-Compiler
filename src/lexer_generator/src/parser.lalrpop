@@ -1,0 +1,93 @@
+use crate::ast::{
+    expression::Expression,
+    bin_op::{BinOp, BinaryOperator},
+    un_op::{UnOp, UnaryOperator},
+    atoms::{
+        regex_atom::{MatchableAtom, RegexAtom, AtomSet},
+        charset::CharSet,
+    },
+};
+
+grammar;
+
+pub Regex: Expression = {
+    <u:Union> => u,
+};
+
+Union: Expression = {
+    <l:Union> "|" <r:Concat> => Expression::BinOp(BinOp {
+        left: Box::new(l),
+        right: Box::new(r),
+        op: BinaryOperator::Union,
+    }),
+    <c:Concat> => c,
+};
+
+Concat: Expression = {
+    <l:Concat> <r:Unary> => Expression::BinOp(BinOp {
+        left: Box::new(l),
+        right: Box::new(r),
+        op: BinaryOperator::Concat,
+    }),
+    <u:Unary> => u,
+};
+
+Unary: Expression = {
+    <a:Unary> <op:UnOp> => Expression::UnOp(UnOp {
+        operand: Box::new(a),
+        op,
+    }),
+    <a:Atom> => a,
+};
+
+UnOp: UnaryOperator = {
+    "*" => UnaryOperator::KleeneStar,
+    "+" => UnaryOperator::Plus,
+    "?" => UnaryOperator::QuestionMark,
+};
+
+Atom: Expression = {
+    <c:Char> => Expression::Atom(MatchableAtom::Atom(RegexAtom::Char(c))),
+    "[" <neg:Negation?> <elems:RangeElems> "]" => Expression::Atom(
+        MatchableAtom::AtomSet(AtomSet::CharSet(CharSet::new(elems, neg.is_some())))
+    ),
+    <c:Escapable> => Expression::Atom(MatchableAtom::Atom(RegexAtom::from(c))),
+    "(" <r:Regex> ")" => r,
+    "." => Expression::Atom(MatchableAtom::AtomSet(AtomSet::Wildcard)),
+};
+
+RangeElems: Vec<(char, char)> = {
+    <start:Char> "-" <end:Char> => vec![(start, end)],
+    <start:Char> "-" <end:Char> <rest:RangeElems> => {
+        let mut ranges = vec![(start, end)];
+        ranges.extend(rest);
+        ranges
+    },
+};
+
+Escapable: char = {
+    "\\|" => '|',
+    "\\[" => '[',
+    "\\]" => ']',
+    "\\-" => '-',
+    "\\(" => '(',
+    "\\)" => ')',
+    "\\\\" => '\\',
+    "\\." => '.',
+    "\\*" => '*',
+    "\\+" => '+',
+    "\\?" => '?',
+    "\\^" => '^',
+    "\\t" => '\t',
+    "\\n" => '\n',
+    "\\r" => '\r',
+    "\\s" => ' ',
+};
+
+Negation: () = {
+    "^" => (),
+};
+
+Char: char = {
+    <c:r"."> => c.chars().next().unwrap(),
+};
