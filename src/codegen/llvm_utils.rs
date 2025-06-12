@@ -58,3 +58,12 @@ pub fn generate_runtime_declarations(output: &mut Vec<String>) {
     output.push("declare double @pow(double, double)".into());
     output.push("declare i8* @concat(i8*, i8*)".into());
 }
+
+pub fn to_llvm_type(type_node: String) -> String {
+    match type_node.as_str() {
+        "Number" => "double".to_string(),
+        "Boolean" => "i1".to_string(),
+        "String" => "i8*".to_string(),
+        _ => "i8*".to_string(), // Default to pointer type for unknown types
+    }
+}

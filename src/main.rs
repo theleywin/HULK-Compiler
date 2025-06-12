@@ -1,14 +1,12 @@
 use crate::semantic_analyzer::semantic_analyzer::SemanticAnalyzer;
 use lalrpop_util::lalrpop_mod;
-
 pub mod ast_nodes;
 pub mod semantic_analyzer;
+pub mod codegen;
 mod tokens;
 pub mod types_tree;
 pub mod visitor;
 use crate::visitor::printer_visitor::PrinterVisitor;
-
-pub mod codegen;
 use crate::codegen::CodeGenerator;
 
 lalrpop_mod!(pub parser);

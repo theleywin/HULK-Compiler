@@ -1,8 +1,9 @@
-use super::context::{CodeGenContext, Type};
+use super::context::CodeGenContext;
 use super::llvm_utils::*;
 use crate::ast_nodes::program::{Program, Statement};
 use crate::codegen::llvm_utils;
 use crate::visitor::accept::Accept;
+
 
 pub struct CodeGenerator {
     pub(crate) context: CodeGenContext,
@@ -43,20 +44,16 @@ impl CodeGenerator {
             if let Statement::StatementExpression(expr) = statement {
                 let result = expr.accept(self);
 
-                let ty = self.context.get_type(&result);
-                match ty {
-                    Type::Boolean => {
-                        let i32_temp = self.context.new_temp(Type::Double);
-                        self.context
-                            .add_line(format!("{} = zext i1 {} to i32", i32_temp, result));
-                        llvm_utils::generate_printf(&mut self.context, &i32_temp, "%d");
-                    }
-                    Type::String => {
-                        llvm_utils::generate_printf(&mut self.context, &result, "%s");
-                    }
-                    Type::Double => {
-                        llvm_utils::generate_printf(&mut self.context, &result, "%f");
-                    }
+                let ty = self.context.get_type(&result.register);
+                if ty == "Boolean" {
+                    let i32_temp = self.context.new_temp("Number".to_string());
+                    self.context
+                        .add_line(format!("{} = zext i1 {} to i32", i32_temp, result.register));
+                    llvm_utils::generate_printf(&mut self.context, &i32_temp, "%d");
+                } else if ty == "String" {
+                    llvm_utils::generate_printf(&mut self.context, &result.register, "%s");
+                } else if ty == "Number" {
+                    llvm_utils::generate_printf(&mut self.context, &result.register, "%f");
                 }
             }
         }
