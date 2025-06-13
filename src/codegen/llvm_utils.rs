@@ -1,5 +1,4 @@
 use super::context::CodeGenContext;
-use std::env;
 
 /// Emit the global string constants and the printf declaration.
 pub fn declare_printf(output: &mut Vec<String>) {
