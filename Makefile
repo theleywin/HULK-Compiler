@@ -1,4 +1,4 @@
-# Makefile — cross-platform LLVM+Clang driver for your Hulk compiler
+# Makefile — cross-platform LLVM+Clang driver for Hulk compiler
 
 # Detect Windows vs Unix:
 ifeq ($(OS),Windows_NT)
