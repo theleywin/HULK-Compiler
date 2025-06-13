@@ -120,4 +120,8 @@ impl Visitor<String> for CodeGenerator {
     fn visit_type_prop_access(&mut self, _node: &mut TypePropAccessNode) -> String {
         unimplemented!()
     }
+    
+    fn visit_print(&mut self, _node: &mut crate::ast_nodes::print::PrintNode) -> String {
+        unimplemented!()
+    }
 }

@@ -2,6 +2,7 @@ use crate::ast_nodes::binary_op::BinaryOpNode;
 use crate::ast_nodes::destructive_assign::DestructiveAssignNode;
 use crate::ast_nodes::for_loop::ForNode;
 use crate::ast_nodes::function_call::FunctionCallNode;
+use crate::ast_nodes::print::PrintNode;
 use crate::ast_nodes::type_def::TypeDefNode;
 use crate::ast_nodes::unary_op::UnaryOpNode;
 use crate::ast_nodes::if_else::IfElseNode;
@@ -32,4 +33,5 @@ pub trait Visitor<T> {
     fn visit_type_instance(&mut self, node: &mut TypeInstanceNode) -> T;
     fn visit_type_function_access(&mut self, node: &mut TypeFunctionAccessNode) -> T;
     fn visit_type_prop_access(&mut self, node: &mut TypePropAccessNode) -> T;
+    fn visit_print(&mut self, node: &mut PrintNode) -> T;
 }

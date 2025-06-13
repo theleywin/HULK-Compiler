@@ -14,3 +14,4 @@ pub mod destructive_assign;
 pub mod type_def;
 pub mod type_instance;
 pub mod type_member_access;
+pub mod print;

@@ -8,6 +8,7 @@ use super::block::{BlockNode, ExpressionList};
 use super::for_loop::ForNode;
 use super::let_in::{LetInNode,Assignment};
 use super::destructive_assign::DestructiveAssignNode;
+use crate::ast_nodes::print::PrintNode;
 use crate::ast_nodes::type_member_access::{TypeFunctionAccessNode, TypePropAccessNode};
 use crate::tokens::OperatorToken;
 use crate::visitor::accept::Accept;
@@ -32,6 +33,7 @@ pub enum Expression {
     TypeInstance(TypeInstanceNode),
     TypeFunctionAccess(TypeFunctionAccessNode),
     TypePropAccess(TypePropAccessNode),
+    Print(PrintNode)
 }
 
 impl Expression {
@@ -59,8 +61,8 @@ impl Expression {
         Expression::WhileLoop(WhileNode::new(condition, body))
     }
 
-    pub fn new_for_loop(variable: String, start: Expression, end: Expression, body: Expression) -> Self {
-        Expression::ForLoop(ForNode::new(variable, start, end, body))
+    pub fn new_for_loop(variable: String, iterable: Expression , body: Expression) -> Self {
+        Expression::ForLoop(ForNode::new(variable, iterable, body))
     }
 
     pub fn new_code_block(expression_list: ExpressionList) -> Self {
@@ -75,8 +77,8 @@ impl Expression {
         Expression::UnaryOp(UnaryOpNode::new(operator, operand))
     }
 
-    pub fn new_if_else(condition: Expression,then_expression: Expression,else_expression: Expression) -> Self {
-        Expression::IfElse(IfElseNode::new(condition, then_expression, else_expression))
+    pub fn new_if_else(condition: Expression, if_expression: Expression, elifs: Vec<(Option<Expression>, Expression)>) -> Self {
+        Expression::IfElse(IfElseNode::new(condition, if_expression, elifs))
     }
 
     pub fn new_let_in(assignments: Vec<Assignment>, body: Expression) -> Self {
@@ -98,7 +100,9 @@ impl Expression {
     pub fn new_type_prop_access(object: Expression, member: String) -> Self {
         Expression::TypePropAccess(TypePropAccessNode::new(object, member))
     }
-
+    pub fn new_print(expression: Expression) -> Self {
+        Expression::Print(PrintNode::new(expression))
+    }
 }
 
 impl Accept for Expression {
@@ -120,6 +124,7 @@ impl Accept for Expression {
             Expression::TypeInstance(node) => visitor.visit_type_instance(node),
             Expression::TypeFunctionAccess(node) => visitor.visit_type_function_access(node),
             Expression::TypePropAccess(node) => visitor.visit_type_prop_access(node),
+            Expression::Print(node) => visitor.visit_print(node)
         }
     }
 }

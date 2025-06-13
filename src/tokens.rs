@@ -2,7 +2,7 @@ use std::fmt;
 
 #[derive(Debug, PartialEq,Clone)]
 pub enum KeywordToken {
-    //PRINT,
+    PRINT,
     WHILE,
     FOR,
     ELIF,
