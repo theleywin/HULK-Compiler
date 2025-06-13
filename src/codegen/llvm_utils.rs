@@ -29,14 +29,9 @@ pub fn generate_printf(context: &mut CodeGenContext, value: &str, fmt: &str) {
 /// Emit the module header—ModuleID, data layout, and target triple—dynamically
 /// obtained from environment variables set by build.rs.
 pub fn generate_header(output: &mut Vec<String>) {
-    let datalayout = env::var("LLVM_DATA_LAYOUT")
-        .expect("LLVM_DATA_LAYOUT not set; did you run via Cargo with the build script?");
-    let triple = env::var("LLVM_HOST_TRIPLE")
-        .expect("LLVM_HOST_TRIPLE not set; did you run via Cargo with the build script?");
-
-    output.push(format!("; ModuleID = 'hulk'"));
-    output.push(format!(r#"target datalayout = "{}""#, datalayout));
-    output.push(format!(r#"target triple = "{}""#, triple));
+    output.push("; ModuleID = 'hulk'".into());
+    output.push("target datalayout = \"e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128\"".into());
+    output.push("target triple = \"x86_64-pc-linux-gnu\"".into());
 }
 
 /// Emit the `main` wrapper around the generated body.
@@ -57,4 +52,13 @@ pub fn generate_runtime_declarations(output: &mut Vec<String>) {
     output.push("declare double @fmod(double, double)".into());
     output.push("declare double @pow(double, double)".into());
     output.push("declare i8* @concat(i8*, i8*)".into());
+}
+
+pub fn to_llvm_type(type_node: String) -> String {
+    match type_node.as_str() {
+        "Number" => "double".to_string(),
+        "Boolean" => "i1".to_string(),
+        "String" => "i8*".to_string(),
+        _ => "i8*".to_string(), // Default to pointer type for unknown types
+    }
 }

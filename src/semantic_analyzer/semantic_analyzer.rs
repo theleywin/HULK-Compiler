@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use super::return_types::{FunctionInfo, SemanticContext};
 use super::semantic_errors::SemanticError;
+use crate::ast_nodes::print::PrintNode;
 use crate::ast_nodes::program::{Program, Statement};
 use crate::ast_nodes::binary_op::BinaryOpNode;
 use crate::ast_nodes::function_call::FunctionCallNode;
@@ -33,6 +34,7 @@ pub struct SemanticAnalyzer {
 
 impl SemanticAnalyzer {
     pub fn new() -> Self {
+        let mut s_a =
         Self {
             context: SemanticContext {
                 symbols: HashMap::new(),
@@ -44,7 +46,10 @@ impl SemanticAnalyzer {
             scopes: Vec::new(),
             errors: Vec::new(),
             types_tree: TypeTree::new(),
-        }
+        };
+        s_a.context.symbols.insert("PI".to_string(), "Number".to_string());
+        s_a.context.symbols.insert("E".to_string(), "Number".to_string());
+        s_a
     }
 
     fn enter_scope(&mut self) {
@@ -172,9 +177,22 @@ impl SemanticAnalyzer {
 impl Visitor<TypeNode> for SemanticAnalyzer {
 
     fn visit_for_loop(&mut self, node: &mut ForNode) -> TypeNode {
-        //TODO Fix for loop , this is an mvp
         self.enter_scope();
         self.context.symbols.insert(node.variable.clone(), "Number".to_string());
+        if let Expression::FunctionCall(func_call) = node.iterable.as_ref() {
+            if func_call.function_name == "range" && func_call.arguments.len() == 2 {
+                for (index, arg) in func_call.arguments.iter().enumerate() {
+                    let arg_type = arg.clone().accept(self);
+                    if arg_type.type_name != "Number" {
+                        self.new_error(SemanticError::InvalidTypeArgument("function".to_string(), arg_type.type_name.clone(), "Number".to_string(), index,"range".to_string()));
+                    }
+                }
+            } else {
+                self.new_error(SemanticError::InvalidIterable(func_call.function_name.clone(),func_call.arguments.len()));
+            }
+        } else  {
+            self.new_error(SemanticError::UnknownError("Error: for only accepts range(x,y) iterable function.".to_string()));
+        }
         let return_type = node.body.accept(self);
         self.exit_scope();
         node.set_type(return_type.clone());
@@ -297,6 +315,10 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
     }
 
     fn visit_function_call(&mut self, node: &mut FunctionCallNode) -> TypeNode {
+        let mut arg_types: Vec<TypeNode> = Vec::new();
+        for arg in node.arguments.iter_mut() {
+            arg_types.push(arg.accept(self));
+        }
         if self.context.current_type.is_some() && node.function_name == "base" {
             if let Some(current_type) = self.context.current_type.clone() {
                 if let Some(type_node) = self.types_tree.get_type(&current_type){
@@ -306,10 +328,9 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                                 if node.arguments.len() != func.params.len() {
                                     self.new_error(SemanticError::InvalidArgumentsCount(node.arguments.len(), func.params.len(), current_function.clone()));
                                 } else {
-                                    for (index, arg) in node.arguments.iter_mut().enumerate() {
-                                        let arg_type = arg.accept(self);
-                                        if arg_type.type_name != func.params[index].signature {
-                                            self.new_error(SemanticError::InvalidTypeArgument("function".to_string() ,arg_type.type_name, func.params[index].signature.clone(), index, func.name.clone()));
+                                    for (index, arg) in arg_types.iter_mut().enumerate() {
+                                        if arg.type_name != func.params[index].signature {
+                                            self.new_error(SemanticError::InvalidTypeArgument("function".to_string() ,arg.type_name.clone(), func.params[index].signature.clone(), index, func.name.clone()));
                                         }
                                     }
                                 }
@@ -334,10 +355,9 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                 self.new_error(SemanticError::InvalidArgumentsCount(node.arguments.len(), arguments_types.len(), node.function_name.clone()));
             }
             else {
-                for (index, arg) in node.arguments.iter_mut().enumerate() {
-                    let arg_type = arg.accept(self);
-                    if arg_type.type_name != arguments_types[index].1 {
-                        self.new_error(SemanticError::InvalidTypeArgument("function".to_string() ,arg_type.type_name, arguments_types[index].1.clone(), index, func_name.clone()));
+                for (index, arg) in arg_types.iter_mut().enumerate() {
+                    if arg.type_name != arguments_types[index].1 {
+                        self.new_error(SemanticError::InvalidTypeArgument("function".to_string() ,arg.type_name.clone(), arguments_types[index].1.clone(), index, func_name.clone()));
                     }
                 }
             }
@@ -466,35 +486,36 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
     }
 
     fn visit_if_else(&mut self, node: &mut IfElseNode) -> TypeNode {
-        let condition_type = node.condition.accept(self);
-        if condition_type != self.get_built_in_types(&BuiltInTypes::Boolean) {
-            self.new_error(SemanticError::InvalidConditionType(condition_type));
+        let if_condition_type = node.condition.accept(self);
+        if if_condition_type != self.get_built_in_types(&BuiltInTypes::Boolean) {
+            self.new_error(SemanticError::InvalidConditionType(if_condition_type));
         }
-        let then_type = node.then_expression.accept(self);
-        let else_type = node.else_expression.accept(self);
-        
-        if then_type != else_type {
-            let lca = self.types_tree.find_lca(&then_type, &else_type);
-            if lca.type_name == "Unknown" {
-                self.new_error(SemanticError::UnknownError("Incompatible types in if-else branches".to_string()));
+        let if_expr_type = node.if_expression.accept(self);
+        let mut result_lca = if_expr_type;
+        for (condition , body_expr) in node.elifs.iter() {
+            let expr_type = body_expr.clone().accept(self);
+            if let Some(cond) = condition {
+                let cond_type = cond.clone().accept(self);
+                if cond_type != self.get_built_in_types(&BuiltInTypes::Boolean) {
+                    self.new_error(SemanticError::InvalidConditionType(cond_type));
+                }
             }
-            node.set_type(lca.clone());
-            lca
-        } else {
-            node.set_type(then_type.clone());
-            then_type
+            if result_lca != expr_type {
+                result_lca = self.types_tree.find_lca(&result_lca, &expr_type);
+                if result_lca.type_name == "Unknown" {
+                    self.new_error(SemanticError::UnknownError("Incompatible types in if-else branches".to_string()));
+                }
+            }
         }
+        node.set_type(result_lca.clone());
+        result_lca
     }
     
     fn visit_let_in(&mut self, node: &mut LetInNode) -> TypeNode {
         self.enter_scope();
         for assig in node.assignments.iter_mut() {
             let expr_type = assig.expression.accept(self);
-            if let Some(_) = self.context.symbols.get(&assig.identifier) {
-                self.new_error(SemanticError::RedefinitionOfVariable(assig.identifier.clone()));
-            } else {
-                self.context.symbols.insert(assig.identifier.clone(), expr_type.type_name);
-            }
+            self.context.symbols.insert(assig.identifier.clone(), expr_type.type_name);
         }
         let return_type = node.body.accept(self);
         self.exit_scope();
@@ -628,5 +649,14 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
             self.new_error(SemanticError::InvalidTypePropertyAccess(object.type_name.clone(), node.member.as_ref().clone()));
             self.get_built_in_types(&BuiltInTypes::Unknown)
         }
+    }
+    
+    fn visit_print(&mut self, node: &mut PrintNode) -> TypeNode {
+        let expr_type = node.expression.accept(self);
+        if expr_type.type_name != "Number" && expr_type.type_name != "String" && expr_type.type_name != "Boolean" {
+            self.new_error(SemanticError::InvalidPrint(expr_type.type_name.clone()));
+        }
+        node.set_type(expr_type.clone());
+        expr_type
     }
 }

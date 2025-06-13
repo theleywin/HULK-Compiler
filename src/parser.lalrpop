@@ -16,7 +16,7 @@ use crate::ast_nodes::function_call::FunctionCallNode;
 grammar;
 
 pub Program: Program = {
-    <v:(<Statement> Semicolon)*> <last:Statement?> => {
+    <v:(<Statement> Semicolon)*> <last:Statement?> Semicolon  => {
         let mut vec = v;
         if let Some(e) = last {
             vec.push(e);
@@ -118,8 +118,8 @@ TypePropAccess: Expression = {
 };
 
 Expr: Expression = { 
-    DestructiveAssignExpr,
-    LogicalOrExpr
+    DestructiveAssignExpr ,
+    LogicalOrExpr 
 };
 
 DestructiveAssignExpr: Expression = {
@@ -250,27 +250,21 @@ WhileLoop: Expression = {
 
 //Maybe catch these errors in a different place (Like Semantic Analysis)
 ForLoop: Expression = {
-    For LParen <id:Identifier> In <call:CompositeExpr> RParen <body:CompositeExpr> => {
-        if let Expression::FunctionCall(func_call) = call {
-            if func_call.function_name == "range" && func_call.arguments.len() == 2 {
-                let mut args = func_call.arguments;
-                let start = args.remove(0);
-                let end = args.remove(0);
-                
-                Expression::new_for_loop(id, start, end, body)
-            } else {
-                panic!("For loop must use `range` with exactly two arguments");
-            }
-        } else {
-            panic!("For loop iterable must be a `range` function call");
-        }
-    }
+    For LParen <id:Identifier> In <call:CompositeExpr> RParen <body:CompositeExpr> => Expression::new_for_loop(id, call, body)
 };
 
 IfElse: Expression = {
-    If LParen <condition:Expr> RParen <if_body:CompositeExpr> Else <else_body:CompositeExpr> => {
-        Expression::new_if_else(condition,if_body,else_body)
-    },
+    If LParen <condition:Expr> RParen <if_body:CodeBlock> => Expression::new_if_else(condition,if_body,Vec::new()),
+    If LParen <condition:Expr> RParen <if_body:CodeBlock> <else_or_elif:ElseOrElif> => Expression::new_if_else(condition, if_body, else_or_elif)
+}
+
+ElseOrElif: Vec<(Option<Expression>,Expression)> = {
+    Else <else_expr:CodeBlock> => vec![(None,else_expr)],
+    Elif LParen <cond:Expr> RParen <body:CodeBlock> <rest:ElseOrElif> => {
+        let mut exprs = vec![(Some(cond),body)];
+        exprs.extend(rest);
+        return exprs;
+    }
 }
 
 CompositeExpr: Expression = {
@@ -293,7 +287,7 @@ PrimaryExpr: Expression = {
     True => Expression::new_boolean(true),
     False => Expression::new_boolean(false),
     CodeBlock,
-    
+    PrintExpr,
 };
 
 Identifier: String = {
@@ -308,9 +302,9 @@ Str: String = {
     r#""([^"\\]|\\.)*""# => String::from_str(&<>[1..<>.len()-1]).unwrap(),
 };
 
-// PrintExpr: Box<Expr> = {
-//     Print LParen <Expr> RParen => Box::new(Expr::Print(<>)),
-// };
+PrintExpr: Expression = {
+    Print LParen <Expr> RParen => Expression::new_print(<>),
+};
 
 UnaryOp: OperatorToken = {
     "!" => OperatorToken::NOT,
@@ -441,9 +435,9 @@ New: KeywordToken = {
     "new" => KeywordToken::NEW,
 };
 
-// Print: KeywordToken = {
-//     "print" => KeywordToken::PRINT,
-// };
+Print: KeywordToken = {
+    "print" => KeywordToken::PRINT,
+};
 
 True: KeywordToken = {
     "true" => KeywordToken::TRUE,

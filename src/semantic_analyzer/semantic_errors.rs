@@ -23,6 +23,8 @@ pub enum SemanticError {
     InvalidTypeFunctionAccess(String,String),
     InvalidTypePropertyAccess(String,String),
     InvalidTypeProperty(String, String),
+    InvalidPrint(String),
+    InvalidIterable(String,usize),
 }
 
 impl SemanticError {
@@ -91,6 +93,12 @@ impl SemanticError {
             }
             SemanticError::InvalidTypeProperty(type_name, property_name) => {
                 format!("Error: type {} does not have a property named {}.", type_name, property_name)
+            }
+            SemanticError::InvalidPrint(type_name) => {
+                format!("Error: type {} cannot be printed.", type_name)
+            }
+            SemanticError::InvalidIterable(func_name, arg_count) => {
+                format!("Error: for only accpets range(x,y) iterable function, function {} with {} arguments was found.", func_name,arg_count)
             }
         }
     }

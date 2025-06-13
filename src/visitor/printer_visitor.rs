@@ -1,5 +1,6 @@
 use crate::ast_nodes::binary_op::BinaryOpNode;
 use crate::ast_nodes::function_call::FunctionCallNode;
+use crate::ast_nodes::print::PrintNode;
 use crate::ast_nodes::type_def::{TypeDefNode, TypeMember};
 use crate::ast_nodes::unary_op::UnaryOpNode;
 use crate::ast_nodes::if_else::IfElseNode;
@@ -65,10 +66,9 @@ impl Visitor<String> for PrinterVisitor {
     }
     fn visit_for_loop(&mut self, node: &mut ForNode) -> String {
         let variable = &node.variable;
-        let start = node.start.accept(self);
-        let end = node.end.accept(self);
+        let iterable = node.iterable.accept(self);
         let body = node.body.accept(self);
-        format!("for ({} in range({}, {})) {{\n{}\n}}", variable, start, end, body)
+        format!("for ({} in {}) {{\n{}\n}}", variable, iterable , body)
     }
     fn visit_code_block(&mut self, node: &mut BlockNode) -> String {
         let expressions: Vec<String> = node.expression_list.expressions.iter_mut()
@@ -88,9 +88,18 @@ impl Visitor<String> for PrinterVisitor {
     }
     fn visit_if_else(&mut self, node: &mut IfElseNode) -> String {
         let condition = node.condition.accept(self);
-        let then_branch = node.then_expression.accept(self);
-        let else_branch = node.else_expression.accept(self);
-        format!("if ({}) {{\n{}\n}} else {{\n{}\n}}", condition, then_branch, else_branch)
+        let if_body = node.if_expression.accept(self);
+        let mut result = format!("if ({}) {{\n{}\n}}",condition,if_body);
+        for (condition , body) in node.elifs.iter() {
+            let expr_body = body.clone().accept(self);
+            if let Some(cond) = condition {
+                let elif_condition = cond.clone().accept(self);
+                result.push_str(&format!(" elif ({}) {{\n{}\n}}", elif_condition,expr_body));
+            }else {
+                result.push_str(&format!(" else {{\n{}\n}}", expr_body));
+            }
+        }
+        result
     }
     fn visit_let_in(&mut self,node: &mut LetInNode) -> String {
         let assignments: Vec<String> = node.assignments.iter_mut()
@@ -149,5 +158,10 @@ impl Visitor<String> for PrinterVisitor {
         let object = node.object.accept(self);
         let member = &node.member;
         format!("{}.{}", object, member)
+    }
+    
+    fn visit_print(&mut self, node: &mut PrintNode) -> String {
+        let expr = node.expression.accept(self);
+        format!("print( {} )",expr)
     }
 }
