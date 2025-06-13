@@ -10,6 +10,18 @@ use super::ndt::NDT;
 use super::tracker::VisitTracker;
 use super::utils::{to_set, to_str};
 
+/// A deterministic finite automaton (DFA) lexer that tokenizes input strings
+/// based on a provided nondeterministic finite automaton (NFA) with tagged tokens.
+///
+/// # Type Parameters
+///
+/// * `T`: The token kind type, which must implement `Clone`, `PartialEq`, `Eq`, `Hash`, and `Debug`.
+///
+/// # Fields
+///
+/// * `start_state`: The initial state of the DFA.
+/// * `accepting_states`: A map from DFA states to token kinds indicating accepting states.
+/// * `transitions`: A map representing DFA transitions from `(state, input_char)` to next state.
 pub struct LexerDFA<T>
 where
     T: Clone + PartialEq,
@@ -23,10 +35,33 @@ impl<T> LexerDFA<T>
 where
     T: Clone + PartialEq + Eq + Hash + Debug,
 {
+    /// Constructs a new `LexerDFA` from a given `LexerNFA`.
+    ///
+    /// # Arguments
+    ///
+    /// * `nfa` - A reference to the NFA with tagged token kinds.
+    ///
+    /// # Returns
+    ///
+    /// A `LexerDFA` representing the equivalent deterministic lexer.
     pub fn new(nfa: &LexerNFA<T>) -> Self {
         LexerDFA::from(nfa)
     }
 
+    /// Scans the input string and produces a vector of lexemes (tokens).
+    ///
+    /// Attempts to match the longest possible lexemes according to the DFA transitions.
+    /// Returns `Ok` with the lexemes if scanning is successful for the entire input,
+    /// or `Err` with a list of lexical error messages if unrecognized characters are found.
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - The input string slice to be tokenized.
+    ///
+    /// # Returns
+    ///
+    /// `Result<Vec<Lexeme<T>>, Vec<String>>` where the `Ok` variant contains the list of recognized tokens,
+    /// and the `Err` variant contains lexical error messages.
     pub fn scan<'a>(&self, input: &'a str) -> Result<Vec<Lexeme<'a, T>>, Vec<String>> {
         let mut results = Vec::new();
         let mut issues = Vec::new();
@@ -94,6 +129,22 @@ impl<T> From<&LexerNFA<T>> for LexerDFA<T>
 where
     T: Clone + PartialEq + Eq + Hash,
 {
+    /// Converts a `LexerNFA` into an equivalent deterministic `LexerDFA`
+    /// using the subset construction algorithm.
+    ///
+    /// The states of the DFA correspond to sets of NFA states,
+    /// with transitions computed via epsilon-closure and moves.
+    ///
+    /// The accepting states are determined by the presence of any NFA accepting states
+    /// in the corresponding subset, selecting the token with the highest priority (lowest number).
+    ///
+    /// # Arguments
+    ///
+    /// * `nfa` - A reference to the nondeterministic lexer NFA.
+    ///
+    /// # Returns
+    ///
+    /// An equivalent deterministic lexer DFA.
     fn from(nfa: &LexerNFA<T>) -> Self {
         let start_state = 0;
         let mut transitions = HashMap::new();

@@ -9,6 +9,17 @@ use crate::automata::{
 };
 use super::token_spec::TokenSpec;
 
+/// A generic lexer that uses a set of token specifications to tokenize input strings.
+/// 
+/// # Type Parameters
+/// 
+/// * `T` - The token kind type. Must implement `Clone`, `PartialEq`, `Eq`, `Hash`, and `Debug`.
+///
+/// # Description
+///
+/// The `Lexer` builds a composite nondeterministic finite automaton (NFA) from
+/// token regex patterns, then determinizes it into a deterministic finite automaton (DFA)
+/// for efficient token scanning. It supports ignoring tokens such as whitespace.
 pub struct Lexer<T>
 where
     T: Clone + PartialEq + Eq + Hash + Debug,
@@ -21,6 +32,15 @@ impl<T> Lexer<T>
 where
     T: Clone + PartialEq + Eq + Hash + Debug,
 {
+    /// Constructs a new `Lexer` from a list of token specifications.
+    ///
+    /// # Arguments
+    ///
+    /// * `specs` - A vector of `TokenSpec`s describing token patterns and kinds.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any regex pattern fails to parse.
     pub fn new(specs: Vec<TokenSpec<T>>) -> Self {
         let parser = RegexParser::new();
         let tagged_automata = specs
@@ -43,6 +63,18 @@ where
         Lexer { ruleset, matcher }
     }
 
+    /// Splits the input string into a sequence of lexemes (tokens).
+    ///
+    /// # Arguments
+    ///
+    /// * `input` - The input string to tokenize.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<Lexeme<T>>)` containing the tokens if lexing is successful.
+    /// * `Err(Vec<String>)` containing error messages if lexing fails.
+    ///
+    /// Tokens flagged as `ignore` in their `TokenSpec` will be omitted from the output.
     pub fn split<'a>(&self, input: &'a str) -> Result<Vec<Lexeme<'a, T>>, Vec<String>> {
         let scan_result = self.matcher.scan(input);
         let Ok(captures) = scan_result else {
