@@ -6,6 +6,7 @@ pub use parser::RegexParser;
 
 pub mod ast;
 pub mod automata;
+pub mod lexer;
 
 #[cfg(test)]
 pub mod test {
@@ -13,4 +14,5 @@ pub mod test {
     pub mod test_expression;
     pub mod test_parsing;
     pub mod test_nfa;
+    pub mod test_lexer;
 }
