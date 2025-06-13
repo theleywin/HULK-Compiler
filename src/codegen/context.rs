@@ -11,7 +11,7 @@ pub struct CodeGenContext {
     pub code: Vec<String>,
     pub globals: Vec<String>,
     pub temp_counter: usize,
-    pub temp_types: HashMap<String, Type>,
+    pub temp_types: HashMap<String, String>,
     pub string_literals: HashMap<String, String>,
     pub next_string_id: usize,
     pub runtime_functions: HashSet<String>,
@@ -21,7 +21,7 @@ pub struct CodeGenContext {
 #[derive(Clone)]
 pub struct VariableInfo {
     pub temp: String,
-    pub ty: Type,
+    pub ty: String,
 }
 
 impl Default for CodeGenContext {
@@ -48,7 +48,7 @@ impl CodeGenContext {
         self.code.push(line);
     }
 
-    pub fn new_temp(&mut self, ty: Type) -> String {
+    pub fn new_temp(&mut self, ty: String) -> String {
         let id = self.temp_counter;
         self.temp_counter += 1;
         let name = format!("%{}", id);
@@ -71,16 +71,16 @@ impl CodeGenContext {
         std::mem::take(&mut self.code)
     }
 
-    pub fn get_type(&self, temp: &str) -> Type {
-        *self.temp_types.get(temp).expect("Unknown temporary")
+    pub fn get_type(&self, temp: &str) -> String {
+        self.temp_types.get(temp).expect("Unknown temporary").clone()
     }
 
     pub fn is_bool(&self, name: &str) -> bool {
-        self.get_type(name) == Type::Boolean
+        self.get_type(name) == "Boolean"
     }
 
     pub fn is_string(&self, name: &str) -> bool {
-        self.get_type(name) == Type::String
+        self.get_type(name) == "String"
     }
 
     pub fn add_string_literal(&mut self, value: &str) -> String {
@@ -112,10 +112,10 @@ impl CodeGenContext {
         self.globals.push(decl);
     }
     
-    pub fn add_variable(&mut self, name: &str, temp: String, ty: Type) {
+    pub fn add_variable(&mut self, name: &str, temp: String, ty: String) {
         self.variables.insert(
             name.to_string(),
-            VariableInfo { temp: temp.clone(), ty }
+            VariableInfo { temp: temp.clone(),ty: ty.to_string()  }
         );
         self.temp_types.insert(temp, ty);
     }
