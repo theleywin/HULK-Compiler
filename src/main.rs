@@ -6,13 +6,11 @@ pub mod semantic_analyzer;
 mod tokens;
 pub mod types_tree;
 pub mod visitor;
-use crate::visitor::printer_visitor::PrinterVisitor;
 
 lalrpop_mod!(pub parser);
 
 fn main() {
-    let input = "
-    type Person (name: String , edad: Number) {
+    let input = "type Person (name: String , edad: Number) {
         name = name;
         edad = edad;
 
@@ -36,12 +34,10 @@ fn main() {
     let a = 20 in {
         let a = 42 in print(a);
         print(a);
-    } ;
-    ";
+    } ;";
 
     let mut expr = parser::ProgramParser::new().parse(input).unwrap();
 
-    let mut printer = PrinterVisitor;
     let mut semantic_analyzer = SemanticAnalyzer::new();
 
     println!("");
@@ -58,6 +54,4 @@ fn main() {
             println!("\x1b[0m");
         }
     }
-    println!("");
-    println!("\x1b[34mAST:\n{}\x1b[0m", printer.print_program(&mut expr));
 }
