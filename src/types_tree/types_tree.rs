@@ -1,0 +1,158 @@
+use std::collections::HashMap;
+use crate::ast_nodes::function_def::{FunctionDefNode, FunctionParams};
+
+use super::tree_node::TypeNode;
+
+pub enum BuiltInTypes {
+    Object,
+    String,
+    Number,
+    Boolean,
+    Unknown,
+}
+
+impl BuiltInTypes {
+    pub fn as_str(&self) -> &str {
+        match self {
+            BuiltInTypes::Object => "Object",
+            BuiltInTypes::String => "String",
+            BuiltInTypes::Number => "Number",
+            BuiltInTypes::Boolean => "Boolean",
+            BuiltInTypes::Unknown => "Unknown",
+        }
+    }
+}
+
+pub struct TypeTree {
+    pub root: TypeNode,
+    pub nodes: HashMap<String, TypeNode>,
+}
+
+impl TypeTree {
+    pub fn new() -> Self {
+        let mut newtree = TypeTree {
+            root: TypeNode::new("Object".to_string(), vec![], 0, None, Vec::new(), HashMap::new(), HashMap::new()),
+            nodes: HashMap::new(),
+        };
+        newtree.nodes.insert("Object".to_string(), newtree.root.clone());
+        newtree.add_type("String".to_string(), vec![], None, HashMap::new(), HashMap::new());
+        newtree.add_type("Number".to_string(), vec![], None, HashMap::new(), HashMap::new());
+        newtree.add_type("Boolean".to_string(), vec![], None, HashMap::new(), HashMap::new());
+        newtree.add_type("Unknown".to_string(), vec![], None, HashMap::new(), HashMap::new());
+        newtree
+    }
+
+    pub fn add_type(&mut self, type_name: String, params: Vec<FunctionParams>, parent_name: Option<String>, variables: HashMap<String, Box<String>>, methods: HashMap<String, Box<FunctionDefNode>>) {
+        match &parent_name {
+            Some(name) => {
+                if let Some(parent) = self.nodes.get_mut(name) { //Problem here 
+                    let new_node = TypeNode::new(type_name.clone(), params, 0, Some(name.clone()), Vec::new(), variables, methods);
+                    parent.add_child(type_name.clone());
+                    self.nodes.insert(type_name.clone(), new_node);
+                }
+            }
+            None => {
+                let new_node = TypeNode::new(type_name.clone(), params, 0, None, Vec::new(), variables, methods);
+                self.root.add_child(new_node.type_name.clone());
+                self.nodes.insert(type_name.clone(), new_node);
+            }
+        }
+    }
+
+    pub fn get_type(&self, type_name: &str) -> Option<TypeNode> {
+        self.nodes.get(type_name).cloned()
+    }
+
+    pub fn find_lca(&self, type1: &TypeNode, type2: &TypeNode) -> TypeNode {
+        if type1.type_name == type2.type_name {
+            return type1.clone();
+        }
+        if type1.depth < type2.depth {
+            return self.find_lca(type1, type2);
+        } else if type2.depth < type1.depth {
+            if let Some(ref parent1) = type1.parent {
+                if let Some(ref parent1_node) = self.nodes.get(parent1) {
+                    return self.find_lca(parent1_node, type2);
+                } else {
+                    return self.root.clone();
+                }
+            } else {
+                return self.root.clone();
+            }
+        } else {
+            if let (Some(parent1), Some(parent2)) = (&type1.parent, &type2.parent) {
+                if let (Some(parent1_node), Some(parent2_node)) = (self.nodes.get(parent1), self.nodes.get(parent2)) {
+                    return self.find_lca(parent1_node, parent2_node);
+                } else {
+                    return self.root.clone();
+                }
+            } else {
+                return self.root.clone();
+            }
+        }
+    }
+
+    pub fn is_ancestor(&self, ancestor: &TypeNode, descendant: &TypeNode) -> bool {
+        let mut current = Some(descendant);
+        while let Some(node) = current {
+            if node.type_name == ancestor.type_name {
+                return true;
+            }
+            if let Some(parent_name) = &node.parent {
+                current = self.nodes.get(parent_name);
+            } else {
+                current = None;
+            }
+        }
+        false
+    }
+
+    pub fn check_cicle(&mut self) -> Option<String> {
+        let mut visited = HashMap::new();
+        for (type_name,_) in self.nodes.clone() {
+            if ! visited.contains_key(&type_name) {
+                if let Some(cycle_node) = self.check_cicle_helper(type_name, &mut visited) {
+                    return Some(cycle_node)
+                }
+            }
+        }
+        return None;
+    }
+
+    fn check_cicle_helper(&mut self, node_name: String, visited: &mut HashMap<String, bool>) -> Option<String> {
+        if visited.contains_key(&node_name) {
+            return Some(node_name);
+        }
+        if let Some(node) = self.nodes.get_mut(&node_name) {
+            visited.insert(node_name.clone(), true);
+            let parent_depth = node.depth;
+            let children = node.children.clone();
+            for child in &children {
+                if let Some(child_node) = self.nodes.get_mut(child) {
+                    child_node.depth = parent_depth + 1; // Update depth for child nodes
+                }
+                if let Some(cycle_node) = self.check_cicle_helper(child.clone(), visited) {
+                    return Some(cycle_node);
+                }
+            }
+            visited.remove(&node_name);
+        }
+        None
+    }
+
+    pub fn find_method(&mut self, node_name: String, method_name: String) -> Option<Box<FunctionDefNode>> {
+        if let Some(type_node) = self.nodes.get_mut(&node_name) {
+            if let Some(method) = type_node.get_method(&method_name) {
+                return Some(method);
+            } else {
+                if let Some(parent) = type_node.parent.clone() {
+                    return self.find_method(parent, method_name);
+                } else {
+                    return None;
+                }  
+            }
+        }
+        return None;
+    }
+
+}

@@ -1,32 +1,42 @@
+use crate::types_tree::tree_node::TypeNode;
+
 use super::expression::Expression;
 
-#[derive(Debug, PartialEq)]
-pub struct FunctionDefNode {
+#[derive(Debug, PartialEq,Clone)]
+pub struct FunctionParams {
     pub name: String,
-    pub params: Vec<String>,
-    pub body: Expression,
+    pub signature: String,
 }
 
-impl FunctionDefNode {
-    pub fn new_expr(name: String, params: Vec<String>, expr: Expression) -> Self {
-        FunctionDefNode {
+impl FunctionParams {
+    pub fn new(name: String, signature: String) -> Self {
+        FunctionParams {
             name,
-            params,
-            body: expr,
+            signature,
         }
     }
 }
 
-// pub struct FunctionCall {
-//     pub name: String,
-//     pub args: Vec<Expression>,
-// }
-// 
-// impl FunctionCall {
-//     pub fn new(name: String, args: Vec<Expression>) -> Self {
-//         FunctionCall {
-//             name,
-//             args,
-//         }
-//     }
-// }
+#[derive(Debug, PartialEq,Clone)]
+pub struct FunctionDefNode {
+    pub name: String,
+    pub params: Vec<FunctionParams>,
+    pub return_type: String,
+    pub body: Expression,
+    pub node_type: Option<TypeNode>,
+}
+
+impl FunctionDefNode {
+    pub fn new_expr(name: String, params: Vec<FunctionParams>, return_type: String, expr: Expression) -> Self {
+        FunctionDefNode {
+            name,
+            params,
+            return_type,
+            body: expr,
+            node_type: None,
+        }
+    }
+    pub fn set_type(&mut self, node_type: TypeNode) {
+        self.node_type = Some(node_type);
+    }
+}

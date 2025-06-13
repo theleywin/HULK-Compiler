@@ -1,7 +1,9 @@
+use crate::types_tree::tree_node::TypeNode;
+
 use super::expression::Expression;
 
-#[derive(Debug, PartialEq)]
-pub struct Assignment {
+#[derive(Debug, PartialEq,Clone)]
+pub struct Assignment { //TODO Add optional Signature Assignment
     pub identifier: String,
     pub expression: Box<Expression>,
 }
@@ -15,10 +17,11 @@ impl Assignment {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq,Clone)]
 pub struct LetInNode {
     pub assignments: Vec<Assignment>,
     pub body: Box<Expression>,
+    pub node_type: Option<TypeNode>,
 }
 
 impl LetInNode {
@@ -26,6 +29,10 @@ impl LetInNode {
         LetInNode {
             assignments,
             body: Box::new(body),
+            node_type: None,
         }
+    }
+    pub fn set_type(&mut self, node_type: TypeNode) {
+        self.node_type = Some(node_type);
     }
 }

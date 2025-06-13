@@ -1,7 +1,10 @@
-#[derive(Debug, PartialEq)]
+use std::fmt;
+
+#[derive(Debug, PartialEq,Clone)]
 pub enum KeywordToken {
     PRINT,
     WHILE,
+    FOR,
     ELIF,
     ELSE,
     IF,
@@ -10,9 +13,12 @@ pub enum KeywordToken {
     TRUE,
     FALSE,
     FUNCTION,
+    INHERITS,
+    TYPE,
+    NEW
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum OperatorToken {
     MUL,
     DIV,
@@ -29,11 +35,46 @@ pub enum OperatorToken {
     LT,
     LTE,
     ASSIGN,
+    CONCAT,
+    DASSIGN,
+    OR,
+    AND,
+    DOT,
 }
 
-#[derive(Debug, PartialEq)]
+impl fmt::Display for OperatorToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            OperatorToken::MUL => "*",
+            OperatorToken::DIV => "/",
+            OperatorToken::PLUS => "+",
+            OperatorToken::MINUS => "-",
+            OperatorToken::MOD => "%",
+            OperatorToken::POW => "^",
+            OperatorToken::NEG => "-",
+            OperatorToken::NOT => "!",
+            OperatorToken::EQ => "==",
+            OperatorToken::NEQ => "!=",
+            OperatorToken::GT => ">",
+            OperatorToken::GTE => ">=",
+            OperatorToken::LT => "<",
+            OperatorToken::LTE => "<=",
+            OperatorToken::ASSIGN => "=",
+            OperatorToken::CONCAT => "@",
+            OperatorToken::DASSIGN => ":=",
+            OperatorToken::AND => "&",
+            OperatorToken::OR => "|",
+            OperatorToken::DOT => ".",
+        };
+        write!(f, "{}", s)  
+    }
+}
+
+
+#[derive(Debug, PartialEq,Clone)]
 pub enum DelimiterToken {
     SEMICOLON,
+    COLON,  
     COMMA,
     LPAREN,
     RPAREN,
