@@ -10,12 +10,15 @@ pub enum Type {
 pub struct CodeGenContext {
     pub code: Vec<String>,
     pub globals: Vec<String>,
+    pub str_constants: Vec<String>,
     pub temp_counter: usize,
+    scope_id: i32,
     pub temp_types: HashMap<String, String>,
     pub string_literals: HashMap<String, String>,
     pub next_string_id: usize,
     pub runtime_functions: HashSet<String>,
-    pub variables: HashMap<String, VariableInfo>,
+    pub variables: HashMap<String, String>,
+    pub scopes: Vec<HashMap<String, String>>,
 }
 
 #[derive(Clone)]
@@ -29,12 +32,15 @@ impl Default for CodeGenContext {
         Self {
             code: Vec::new(),
             globals: Vec::new(),
-            temp_counter: 0,
+            str_constants: Vec::new(),
+            temp_counter: 1,
+            scope_id: 0,
             temp_types: HashMap::new(),
             string_literals: HashMap::new(),
             next_string_id: 0,
             runtime_functions: HashSet::new(),
             variables: HashMap::new(),
+            scopes: Vec::new(),
         }
     }
 }
@@ -83,6 +89,20 @@ impl CodeGenContext {
         self.get_type(name) == "String"
     }
 
+    pub fn enter_scope(&mut self) {
+        self.scope_id += 1;
+        self.scopes.push(self.variables.clone())
+    }
+
+    pub fn exit_scope(&mut self) {
+        self.scope_id -= 1;
+        self.variables = self.scopes.pop().unwrap_or_default();
+    }
+
+    pub fn get_scope(&self) -> i32 {
+        self.scope_id
+    }
+
     pub fn add_string_literal(&mut self, value: &str) -> String {
         if let Some(name) = self.string_literals.get(value) {
             return name.clone();
@@ -107,20 +127,48 @@ impl CodeGenContext {
         self.string_literals.insert(value.to_string(), name.clone());
         name
     }
+
+    pub fn clean_and_join(input: String) -> String {
+        input.chars()
+            .map(|c| if c.is_whitespace() { '_' } else { c })
+            .collect()
+    }
+
+    pub fn add_str_const(&mut self, value: String, len: usize) -> String {
+        let constant_name = Self::clean_and_join(value.clone());
+        let line = format!("@.str_{} = private unnamed_addr constant [{} x i8] c\"{}\\00\"", constant_name, len + 2, value + "\n");
+        if !self.str_constants.contains(&line) { 
+            self.str_constants.push(line);
+        }
+        format!("@.str_{}", constant_name)
+    }
     
     pub fn add_global_declaration(&mut self, decl: String) {
         self.globals.push(decl);
     }
     
-    pub fn add_variable(&mut self, name: &str, temp: String, ty: String) {
+    pub fn add_variable(&mut self, name: String, ty: String) {
         self.variables.insert(
-            name.to_string(),
-            VariableInfo { temp: temp.clone(),ty: ty.to_string()  }
+            name,
+            ty,
         );
-        self.temp_types.insert(temp, ty);
     }
     
-    pub fn get_variable(&self, name: &str) -> Option<&VariableInfo> {
-        self.variables.get(name)
+    pub fn get_variable(&self, name: String) -> String {
+        let mut current_scope = self.scope_id.clone();
+        while current_scope >= 0 {
+            let register = format!("%{}.{}",name,current_scope);
+            if let Some(_) = self.variables.get(&register) {
+                return register;
+            }
+            current_scope -= 1;
+        }
+        panic!("Variable not found: {}",name.to_string())
+    }
+
+    pub fn new_id(&mut self) -> usize {
+        let id = self.temp_counter;
+        self.temp_counter += 1;
+        id
     }
 }
