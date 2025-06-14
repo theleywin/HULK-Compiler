@@ -12,7 +12,7 @@ lalrpop_mod!(pub parser);
 use crate::parser_w_errors::Parser;
 
 fn main() {
-    let input = r#"5+;"#;
+    let input = r#"5/"#;
 
     let parser = Parser::new();
     match parser.parse(input) {

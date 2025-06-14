@@ -39,7 +39,6 @@ impl Parser {
     }
 
     fn token_to_human_readable(token: &str) -> String {
-        // Named Tokens
         match token {
             // Keywords
             "Function" => "`function`".to_string(),
@@ -85,7 +84,6 @@ impl Parser {
                 .replace('"', "")
                 .replace('\\', "")
                 .replace("r#", "")
-                .replace("r", "")
                 .replace('#', ""),
         }
     }
