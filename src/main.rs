@@ -1,7 +1,7 @@
 use crate::semantic_analyzer::semantic_analyzer::SemanticAnalyzer;
 use lalrpop_util::lalrpop_mod;
-mod parser_w_errors;
 pub mod ast_nodes;
+mod parser_w_errors;
 pub mod semantic_analyzer;
 mod tokens;
 pub mod types_tree;
@@ -12,7 +12,7 @@ lalrpop_mod!(pub parser);
 use crate::parser_w_errors::Parser;
 
 fn main() {
-    let input = "function while (a: String):Number => 5+1 ;";
+    let input = r#"5+;"#;
 
     let parser = Parser::new();
     match parser.parse(input) {
