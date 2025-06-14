@@ -81,7 +81,12 @@ impl Parser {
             "Colon" => "`:`".to_string(),
 
             // Default fallback
-            _ => "statement, expression, literal or identifier".to_string(),
+            _ => token
+                .replace('"', "")
+                .replace('\\', "")
+                .replace("r#", "")
+                .replace("r", "")
+                .replace('#', ""),
         }
     }
 
