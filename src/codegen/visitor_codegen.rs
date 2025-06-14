@@ -3,6 +3,7 @@ use super::llvm_utils::{to_llvm_type};
 use crate::ast_nodes::binary_op::BinaryOpNode;
 use crate::ast_nodes::block::BlockNode;
 use crate::ast_nodes::destructive_assign::DestructiveAssignNode;
+use crate::ast_nodes::expression::Expression;
 use crate::ast_nodes::for_loop::ForNode;
 use crate::ast_nodes::function_call::FunctionCallNode;
 use crate::ast_nodes::function_def::FunctionDefNode;
@@ -338,8 +339,19 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         GeneratorResult::new(body_result.register, body_result.llvm_type)
     }
 
-    fn visit_destructive_assign(&mut self, _node: &mut DestructiveAssignNode) -> GeneratorResult {
-        unimplemented!()
+    fn visit_destructive_assign(&mut self, node: &mut DestructiveAssignNode) -> GeneratorResult {
+        let expr_result = node.expression.accept(self);
+        match *node.identifier.clone() {
+            Expression::Identifier(id) => {
+                let identifier_register = self.context.get_variable(id.value.clone());
+                self.context.add_line(format!(
+                    "store {} {}, ptr {}",
+                    expr_result.llvm_type, expr_result.register, identifier_register
+                ));
+            }
+            _ => todo!() // Prop access 
+        }
+        GeneratorResult::new(expr_result.register, expr_result.llvm_type)
     }
 
     fn visit_type_def(&mut self, _node: &mut TypeDefNode) -> GeneratorResult {
