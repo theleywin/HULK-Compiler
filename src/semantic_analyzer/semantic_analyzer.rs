@@ -182,19 +182,13 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
     fn visit_for_loop(&mut self, node: &mut ForNode) -> TypeNode {
         self.enter_scope();
         self.context.symbols.insert(node.variable.clone(), "Number".to_string());
-        if let Expression::FunctionCall(func_call) = node.iterable.as_ref() {
-            if func_call.function_name == "range" && func_call.arguments.len() == 2 {
-                for (index, arg) in func_call.arguments.iter().enumerate() {
-                    let arg_type = arg.clone().accept(self);
-                    if arg_type.type_name != "Number" {
-                        self.new_error(SemanticError::InvalidTypeArgument("function".to_string(), arg_type.type_name.clone(), "Number".to_string(), index,"range".to_string()));
-                    }
-                }
-            } else {
-                self.new_error(SemanticError::InvalidIterable(func_call.function_name.clone(),func_call.arguments.len()));
-            }
-        } else  {
-            self.new_error(SemanticError::UnknownError("Error: for only accepts range(x,y) iterable function.".to_string()));
+        let start_type = node.start.accept(self);
+        let end_type = node.end.accept(self);
+        if start_type.type_name != "Number" {
+            self.new_error(SemanticError::InvalidTypeArgument("for loop".to_string(), start_type.type_name.clone(), "Number".to_string(), 0,"range".to_string()));
+        }
+        if end_type.type_name != "Number" {
+            self.new_error(SemanticError::InvalidTypeArgument("for loop".to_string(), end_type.type_name.clone(), "Number".to_string(), 1,"range".to_string()));
         }
         let return_type = node.body.accept(self);
         self.exit_scope();
@@ -210,7 +204,7 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                     self.context.symbols.insert(id.value.clone(), new_type.type_name.clone());
                     node.set_type(new_type.clone());
                     new_type
-                }
+                }   
                 else {
                     self.new_error(SemanticError::UndefinedIdentifier(id.value.clone()));
                     self.get_built_in_types(&BuiltInTypes::Unknown)

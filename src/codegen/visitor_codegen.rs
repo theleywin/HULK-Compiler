@@ -151,8 +151,77 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         GeneratorResult::new(return_reg, node_type)
     }
 
-    fn visit_for_loop(&mut self, _node: &mut ForNode) -> GeneratorResult {
-        unimplemented!()
+    fn visit_for_loop(&mut self, node: &mut ForNode) -> GeneratorResult {
+        let start_reg = node.start.accept(self);
+        let end_reg = node.end.accept(self);
+        self.context.enter_scope();
+        let for_condition_id = self.context.new_id();
+        let for_condition_label = format!("for_condition.{}", for_condition_id); 
+        let for_body_id = self.context.new_id();
+        let for_body_label = format!("for_body.{}", for_body_id);
+        let for_exit_id = self.context.new_id();
+        let for_exit_label = format!("for_exit.{}", for_exit_id);
+        let index_reg = format!("%{}.{}", node.variable, self.context.get_scope());
+        let comp_reg = self.context.new_temp("Number".to_string());
+        self.context.add_line(format!(
+            "{} = fcmp ole double {}, {}",
+            comp_reg, start_reg.register, end_reg.register
+        ));
+        let step_reg = self.context.new_temp("Number".to_string());
+        self.context.add_line(format!(
+            "{} = select i1 {}, double 1.0, double -1.0",
+            step_reg, comp_reg
+        ));
+        self.context.add_variable(index_reg.clone(), start_reg.llvm_type.clone());
+        self.context.add_line(format!(
+            "{} = alloca {}",
+            index_reg, start_reg.llvm_type
+        )); 
+        self.context.add_line(format!(
+            "store {} {}, ptr {}",
+            start_reg.llvm_type, start_reg.register, index_reg
+        ));
+
+        self.context.add_line(format!("br label %{}\n\n", for_condition_label));
+        self.context.add_line(format!("{}:", for_condition_label));
+        let curr = self.context.new_temp("Number".to_string());
+        self.context.add_line(format!(
+            "{} = load {}, ptr {}\n",
+            curr, start_reg.llvm_type, index_reg
+        ));
+        let comp_up = self.context.new_temp("Number".to_string());
+        self.context.add_line(format!(
+            "{} = fcmp ole double {}, {}",
+            comp_up, curr, end_reg.register
+        ));
+        let comp_down = self.context.new_temp("Number".to_string());
+        self.context.add_line(format!(
+            "{} = fcmp oge double {}, {}",
+            comp_down, curr, end_reg.register
+        ));
+        let condition = self.context.new_temp("Boolean".to_string());
+        self.context.add_line(format!(
+            "{} = select i1 {}, i1 {}, i1 {}",
+            condition, comp_reg ,comp_up, comp_down
+        ));
+        self.context.add_line(format!(
+            "br i1 {}, label %{}, label %{}\n\n",
+            condition, for_body_label, for_exit_label
+        ));
+        self.context.add_line(format!("{}:", for_body_label));
+        let body_result = node.body.accept(self);
+        let step_val = self.context.new_temp("Number".to_string());
+        self.context.add_line(format!(
+            "{} = fadd double {}, {}\n",
+            step_val, curr, step_reg
+        ));
+        self.context.add_line(format!(
+            "store double {}, ptr {}\n\n",
+            step_val, index_reg
+        ));
+        self.context.add_line(format!("br label %{}\n\n", for_condition_label));
+        self.context.add_line(format!("{}:", for_exit_label));
+        GeneratorResult::new(body_result.register, body_result.llvm_type)
     }
 
     fn visit_code_block(&mut self, node: &mut BlockNode) -> GeneratorResult {
