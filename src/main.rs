@@ -24,7 +24,15 @@ fn main() {
             Sum(x) + 30
         };
         print(Fac(1));
-    ";
+       
+        print(\"another test aaahhagahahhh sexo\");
+        let x = 59 in {
+            while(x%69 != 0) {
+                x := x + 1;
+                print(x)
+            };
+        };    
+";
 
      let parser = Parser::new();
     match parser.parse(input) {
