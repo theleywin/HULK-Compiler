@@ -8,9 +8,10 @@ mod tokens;
 pub mod types_tree;
 pub mod visitor;
 
-use codegen::CodeGenerator;
-
 lalrpop_mod!(pub parser);
+
+use crate::parser_w_errors::Parser;
+use codegen::CodeGenerator;
 
 fn main() {
     let input = "
@@ -25,16 +26,25 @@ fn main() {
         print(Fac(1));
     ";
 
-    let mut expr = parser::ProgramParser::new().parse(input).unwrap();
-
-    let mut semantic_analyzer = SemanticAnalyzer::new();
-
-    println!("");
-    let result = semantic_analyzer.analyze(&mut expr);
-    match result {
-        Ok(_) => {
-            println!("Semantic Analyzer OK");
-
+     let parser = Parser::new();
+    match parser.parse(input) {
+        Ok(mut expr) => {
+            println!("\x1b[32mSyntactic Analyzer OK\x1b[0m");
+            println!("\x1b[0m");
+            let mut semantic_analyzer = SemanticAnalyzer::new();
+            let result = semantic_analyzer.analyze(&mut expr);
+            match result {
+                Ok(_) => {
+                    println!("\x1b[32mSemantic Analyzer OK\x1b[0m");
+                }
+                Err(errors) => {
+                    println!("\x1b[31mSemantic Errors:");
+                    for err in errors.iter() {
+                        println!("{}", err.message());
+                    }
+                    println!("\x1b[0m");
+                }
+            }
             // Generate code after semantic analysis
             println!("\nGenerating LLVM IR...");
             let mut codegen = CodeGenerator::new();
