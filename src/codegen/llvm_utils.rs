@@ -5,7 +5,9 @@ pub fn declare_printf(output: &mut Vec<String>) {
     output.push(r#"@.str.f = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1"#.into());
     output.push(r#"@.str.d = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1"#.into());
     output.push(r#"@.str.s = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1"#.into());
-    output.push("declare i32 @printf(i8* nocapture readonly, ...) nounwind".into());
+    output.push(r#"@.true_str = private  constant [6 x i8] c"true\0A\00", align 1"#.into());
+    output.push(r#"@.false_str = private constant [7 x i8] c"false\0A\00", align 1"#.into());
+    output.push("declare i32 @printf(ptr, ...)".into());
 }
 
 /// Emit a call to printf with the given format and value.

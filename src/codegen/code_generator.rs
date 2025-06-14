@@ -1,8 +1,8 @@
-use super::context::{CodeGenContext, Type};
+use super::context::CodeGenContext;
 use super::llvm_utils::*;
 use crate::ast_nodes::program::{Program, Statement};
-use crate::codegen::llvm_utils;
 use crate::visitor::accept::Accept;
+
 
 pub struct CodeGenerator {
     pub(crate) context: CodeGenContext,
@@ -23,47 +23,60 @@ impl CodeGenerator {
 
         let mut body_context = CodeGenContext::new();
         std::mem::swap(&mut self.context, &mut body_context);
-        self.generate_body(program);
-
+        
         let globals = self.context.take_globals();
-        let body_code = self.context.take_body();
         std::mem::swap(&mut self.context, &mut body_context);
 
         module_code.extend(globals);
         if !module_code.last().map(|s| s.is_empty()).unwrap_or(false) {
             module_code.push("".into());
         }
-
-        generate_main_wrapper(&mut module_code, &body_code);
+        module_code.extend(self.get_definitions(program));
+        let main_code = &self.get_main_code(program);
+        generate_main_wrapper(&mut module_code, &main_code , self.context.str_constants.clone());
         module_code.join("\n")
     }
 
-    fn generate_body(&mut self, program: &mut Program) {
-        for statement in &mut program.statements {
-            if let Statement::StatementExpression(expr) = statement {
-                let result = expr.accept(self);
 
-                let ty = self.context.get_type(&result);
-                match ty {
-                    Type::Boolean => {
-                        let i32_temp = self.context.new_temp(Type::Double);
-                        self.context
-                            .add_line(format!("{} = zext i1 {} to i32", i32_temp, result));
-                        llvm_utils::generate_printf(&mut self.context, &i32_temp, "%d");
-                    }
-                    Type::String => {
-                        llvm_utils::generate_printf(&mut self.context, &result, "%s");
-                    }
-                    Type::Double => {
-                        llvm_utils::generate_printf(&mut self.context, &result, "%f");
-                    }
+    fn get_main_code(&mut self, program: &mut Program) -> Vec<String> {
+        let main_code;
+        for statement in &mut program.statements {
+            match statement {
+                Statement::StatementExpression(_) => {
+                    statement.accept(self);
                 }
+                _ => continue,
             }
         }
+        main_code = self.context.code.clone();
+        self.context.code.clear();
+        main_code
     }
+
+    fn get_definitions(&mut self, program: &mut Program) -> Vec<String> {
+        let definitions ;
+        for statement in &mut program.statements {
+            match statement {
+                Statement::StatementTypeDef(_) => {
+                    statement.accept(self);
+                }
+                Statement::StatementFunctionDef(_) => {
+                    statement.accept(self);
+                }
+                _ => continue,
+            }
+        }
+        definitions = self.context.code.clone();
+        self.context.code.clear();
+        definitions 
+    }
+
 }
 
-fn generate_main_wrapper(module_code: &mut Vec<String>, body_code: &[String]) {
+fn generate_main_wrapper(module_code: &mut Vec<String>, body_code: &[String] , global_consts: Vec<String>) {
+    for global_const in global_consts {
+        module_code.push(global_const);
+    }
     module_code.push("define i32 @main() {".into());
     module_code.push("entry:".into());
     for line in body_code {
