@@ -77,6 +77,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         let temp = self.context.new_temp("String".to_string());
         let len = node.value.len();
         let global_const = self.context.add_str_const(node.value.clone(), len.clone());
+        self.context.string_literals.insert(temp.clone(), node.value.clone());
         self.context.add_line(format!("{} = getelementptr [{} x i8], ptr {}, i32 0, i32 0",temp,len + 1,global_const));
         GeneratorResult::new(temp, "ptr".to_string())
     }
@@ -341,23 +342,29 @@ impl Visitor<GeneratorResult> for CodeGenerator {
             }
 
             OperatorToken::CONCAT => {
-                if self.context.get_type(&left_val.register) != "String"
-                    || self.context.get_type(&right_val.register) != "String"
-                {
-                    panic!("Concatenation requires string operands");
-                }
-
-                if !self.context.runtime_functions.contains("concat") {
-                    self.context.add_global_declaration("declare i8* @concat(i8*, i8*)".to_string());
-                    self.context.runtime_functions.insert("concat".to_string());
-                }
-
-                let temp = self.context.new_temp("String".to_string());
-                self.context.add_line(format!(
-                    "{} = call i8* @concat(i8* {}, i8* {})",
-                    temp, left_val.register, right_val.register
-                ));
-                GeneratorResult::new(temp, "i8*".to_string())
+                let len1 = self.context.new_temp("Number".to_string());
+                let len2 = self.context.new_temp("Number".to_string());
+                let total_len = self.context.new_temp("Number".to_string());
+                let total_len_plus_one = self.context.new_temp("Number".to_string());
+                let result_ptr = self.context.new_temp("String".to_string());
+                let copy_reg = self.context.new_temp("ptr".to_string());
+                let result = self.context.new_temp("String".to_string());
+                self.context.add_line(
+                    format!(
+                        "{} = call i32 @strlen(ptr {})\n
+                        {} = call i32 @strlen(ptr {})\n
+                        {} = add i32 {}, {}\n
+                        {} = add i32 {}, 1\n
+                        {} = call ptr @malloc(i32 {})\n
+                        {} = call ptr @strcpy(ptr {}, ptr {})\n 
+                        {} = call ptr @strcat(ptr {}, ptr {})\n
+                        ",len1,left_val.register,len2, right_val.register,
+                        total_len,len1,len2,total_len_plus_one,total_len,
+                        result_ptr,total_len_plus_one,copy_reg,result_ptr,left_val.register,
+                        result,result_ptr,right_val.register
+                    )
+                );
+                GeneratorResult::new(result, "ptr".to_string())
             }
 
             _ => panic!("Unsupported binary operator: {:?}", op),
@@ -441,45 +448,30 @@ impl Visitor<GeneratorResult> for CodeGenerator {
     
     fn visit_print(&mut self, node: &mut PrintNode) -> GeneratorResult {
         let arg = node.expression.accept(self);
+        let call_reg = self.context.new_temp("i32".to_string());
+        let new_line_reg = self.context.new_temp("ptr".to_string());
+        let call_new_line = self.context.new_temp("ptr".to_string());
         let id = self.context.new_id();
+        let new_line = format!("{} = getelementptr [2 x i8], ptr @.newline, i32 0, i32 0", new_line_reg);
+        let new_line2 = format!("{} = call i32 (ptr, ...) @printf(ptr {})", call_new_line, new_line_reg);
         if arg.llvm_type == "i1" {
             self.context.add_line(format!("%bool_ptr{} = select i1 {}, ptr @.true_str, ptr @.false_str", id ,arg.register));
-            self.context.add_line(format!("call i32 (ptr, ...) @printf(ptr %bool_ptr{})", id));
+            self.context.add_line(format!("{} = call i32 (ptr, ...) @printf(ptr %bool_ptr{})", call_reg,id));
+            self.context.add_line(new_line);
+            self.context.add_line(new_line2);
         } else if arg.llvm_type == "double" {
-            self.context.add_line(format!("%fmt_dbl_ptr{} = getelementptr [4 x i8], ptr @.str.f, i32 0, i32 0", id));
-            self.context.add_line(format!("call i32 (ptr, ...) @printf(ptr %fmt_dbl_ptr{}, double {})", id, arg.register));
+            self.context.add_line(format!("%fmt_dbl_ptr{} = getelementptr [4 x i8], ptr @.str.f, i32 0, i32 0", id)); 
+            self.context.add_line(format!("{} = call i32 (ptr, ...) @printf(ptr %fmt_dbl_ptr{}, double {})", call_reg, id, arg.register));
+            self.context.add_line(new_line);
+            self.context.add_line(new_line2);
         } else if arg.llvm_type == "ptr" {
-            self.context.add_line(format!("call i32 (ptr, ...) @printf(ptr {})", arg.register));
-            // match node.expression.as_ref() {
-            //     Expression::Str(string_lit) => {
-                    
-            //     }
-            //     _ => {
-            //         panic!("Unsupported expression type for print: {:?}", node.expression);
-            //     } 
-            // }
+            self.context.add_line(format!("{} = call i32 (ptr, ...) @printf(ptr {})", call_reg, arg.register));
+            self.context.add_line(new_line);
+            self.context.add_line(new_line2);
         } else {
             panic!("Unsupported expression type for print: {:?}", node.expression);
         }
-        // match node.expression.as_ref() {
-        //     Expression::Boolean(_) => {
-        //         self.context.add_line(format!("%bool_ptr{} = select i1 {}, ptr @.true_str, ptr @.false_str", id ,arg.register));
-        //         self.context.add_line(format!("call i32 (ptr, ...) @printf(ptr %sbool_ptr{})", id));
-        //     }
-        //     Expression::Number(_) => {
-        //         self.context.add_line(format!("%fmt_dbl_ptr{} = getelementptr [4 x i8], ptr @.str.f, i32 0, i32 0", id));
-        //         self.context.add_line(format!("call i32 (ptr, ...) @printf(ptr %fmt_dbl_ptr{}, double {})", id, arg.register));
-        //     }
-        //     Expression::Str(string_lit) => {
-        //         let len = string_lit.value.len();
-        //         let global_const = self.context.add_str_const(string_lit.value.clone(), len.clone() );
-        //         self.context.add_line(format!("%str_ptr{} = getelementptr [{} x i8], ptr {}, i32 0, i32 0",id,len + 1,global_const));
-        //         self.context.add_line(format!("call i32 (ptr, ...) @printf(ptr %str_ptr{})",id));
-        //     }
-        //     _ => {
-        //         panic!("Unsupported expression type for print: {:?}", node.expression);
-        //     }
-        // }
         GeneratorResult::new(arg.register, arg.llvm_type)
     }
+
 }

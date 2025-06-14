@@ -12,6 +12,7 @@ pub struct CodeGenContext {
     pub globals: Vec<String>,
     pub str_constants: Vec<String>,
     pub temp_counter: usize,
+    pub id: usize,
     scope_id: i32,
     pub temp_types: HashMap<String, String>,
     pub string_literals: HashMap<String, String>,
@@ -34,6 +35,7 @@ impl Default for CodeGenContext {
             globals: Vec::new(),
             str_constants: Vec::new(),
             temp_counter: 1,
+            id: 1,
             scope_id: 0,
             temp_types: HashMap::new(),
             string_literals: HashMap::new(),
@@ -136,7 +138,7 @@ impl CodeGenContext {
 
     pub fn add_str_const(&mut self, value: String, len: usize) -> String {
         let constant_name = Self::clean_and_join(value.clone());
-        let line = format!("@.str_{} = private unnamed_addr constant [{} x i8] c\"{}\\00\"", constant_name, len + 2, value + "\n");
+        let line = format!("@.str_{} = private unnamed_addr constant [{} x i8] c\"{}\\00\"", constant_name, len + 1, value);
         if !self.str_constants.contains(&line) { 
             self.str_constants.push(line);
         }
@@ -167,8 +169,8 @@ impl CodeGenContext {
     }
 
     pub fn new_id(&mut self) -> usize {
-        let id = self.temp_counter;
-        self.temp_counter += 1;
+        let id = self.id;
+        self.id += 1;
         id
     }
 }

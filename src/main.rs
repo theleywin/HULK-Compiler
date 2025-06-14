@@ -14,17 +14,18 @@ use crate::parser_w_errors::Parser;
 use codegen::CodeGenerator;
 
 fn main() {
-    let input = "
-        function Sum(x: Number) : Number => x + 69 ;
-        print(Sum(1));
-        print( 5 < 4 );
-        print(\"La maldita hija del yalorde\");
-        print(\"La maldita hija del yalorde\");
-        function Fac(x: Number) : Number {
-            Sum(x) + 30
+    let input = r#"
+        for (pene in range(1,5)){
+            let a = "sexo" in {
+                let b = a @ " muy fuerte" in { 
+                    let c = b @ " y muy duro" in {
+                        print(c); 
+                    };
+                };
+            };
+            print( pene );
         };
-        print(Fac(1));
-    ";
+    "#;
 
      let parser = Parser::new();
     match parser.parse(input) {
