@@ -1,6 +1,7 @@
 use crate::semantic_analyzer::semantic_analyzer::SemanticAnalyzer;
 use lalrpop_util::lalrpop_mod;
 pub mod ast_nodes;
+mod parser_w_errors;
 pub mod semantic_analyzer;
 pub mod codegen;
 mod tokens;
@@ -64,12 +65,11 @@ fn main() {
             } else {
                 eprintln!("\x1b[31mCompilation failed\x1b[0m");
             }
-
         }
         Err(errors) => {
-            println!("\x1b[31mErrors:");
+            println!("\x1b[31mSyntax Errors:");
             for err in errors.iter() {
-                println!("{}", err.message());
+                println!("{}", err);
             }
             println!("\x1b[0m");
         }

@@ -142,3 +142,42 @@ pub fn lex_another_hulk_line_with_error() {
         "Lexical Error!: Unexpected character '#' at line: 0, column: 18"
     );
 }
+
+#[test]
+pub fn lex_another_hulk_line_with_multiple_errors() {
+    let rules = vec![
+        TokenSpec::build("EQUAL", r"="),
+        TokenSpec::build("FUNCTION", r"function"),
+        TokenSpec::build("ARROW", r"=>"),
+        TokenSpec::build("SEMICOLON", r";"),
+        TokenSpec::build("COLON", r":"),
+        TokenSpec::build("PLUS", r"\+"),
+        TokenSpec::build("LPAREN", r"\("),
+        TokenSpec::build("RPAREN", r"\)"),
+        TokenSpec::build("COMMA", r","),
+        TokenSpec::build("IDENTIFIER", r"(_|[a-zA-Z])(_|[a-z0-9A-Z])*"),
+        TokenSpec::build_ignorable("WhiteSpace", r"(\s|\t|\n)+"),
+    ];
+
+    let lexer = Lexer::new(rules);
+    let input =
+"function 2a () => b $ c;
+function testicol () => d + e;
+function minus() => f - g;";
+
+    let result = lexer.split(input);
+
+    assert!(result.is_err());
+
+    let errors = result.err().unwrap();
+
+    assert_eq!(errors.len(), 3);
+    assert_eq!(
+        errors,
+        vec![
+            "Lexical Error!: Unexpected character '2' at line: 0, column: 9",
+            "Lexical Error!: Unexpected character '$' at line: 0, column: 20",
+            "Lexical Error!: Unexpected character '-' at line: 4, column: 23"
+        ]
+    );
+}
