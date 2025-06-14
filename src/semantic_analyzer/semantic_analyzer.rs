@@ -104,8 +104,11 @@ impl SemanticAnalyzer {
                         if self.context.declared_functions.contains_key(&node.name) {
                             self.new_error(SemanticError::RedefinitionOfFunction(node.name.clone()));
                         } else {
-
-                            self.context.declared_functions.insert(node.name.clone(), FunctionInfo::new(node.name.clone(), arg_types.clone(),self.types_tree.get_type(&func_return).unwrap().type_name));
+                            if let Some(func_type) = self.types_tree.get_type(&func_return) {
+                                self.context.declared_functions.insert(node.name.clone(), FunctionInfo::new(node.name.clone(), arg_types.clone(), func_type.type_name));
+                            } else {
+                                self.context.declared_functions.insert(node.name.clone(), FunctionInfo::new(node.name.clone(), arg_types.clone(), self.get_built_in_types(&BuiltInTypes::Unknown).type_name));
+                            }
                         }
                     },
                     _ => continue ,
