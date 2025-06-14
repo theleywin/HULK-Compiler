@@ -1,7 +1,7 @@
 use crate::semantic_analyzer::semantic_analyzer::SemanticAnalyzer;
 use lalrpop_util::lalrpop_mod;
-mod parser_w_errors;
 pub mod ast_nodes;
+mod parser_w_errors;
 pub mod semantic_analyzer;
 mod tokens;
 pub mod types_tree;
@@ -12,17 +12,18 @@ lalrpop_mod!(pub parser);
 use crate::parser_w_errors::Parser;
 
 fn main() {
-    let input = "function while (a: String):Number => 5+1 ;";
+    let input = r#"5/"#;
 
     let parser = Parser::new();
     match parser.parse(input) {
         Ok(mut expr) => {
+            println!("\x1b[32mSyntactic Analyzer OK\x1b[0m");
+            println!("\x1b[0m");
             let mut semantic_analyzer = SemanticAnalyzer::new();
-            println!("");
             let result = semantic_analyzer.analyze(&mut expr);
             match result {
                 Ok(_) => {
-                    println!("Semantic Analyzer OK");
+                    println!("\x1b[32mSemantic Analyzer OK\x1b[0m");
                 }
                 Err(errors) => {
                     println!("\x1b[31mSemantic Errors:");
