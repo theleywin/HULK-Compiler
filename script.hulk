@@ -1,3 +1,30 @@
-let name ="Diego" in {
-print(name @ " acaba los types tú puedes");
+function is_prime(n: Number): Boolean {
+   
+    if (n <= 1) {
+         false;
+    }
+    
+    elif (n == 2) {
+         true;
+    }
+    
+    elif (n % 2 == 0) {
+         false;
+    }
+    
+   else {
+         let divisor = 3 in {
+    
+            while (divisor * divisor <= n) {
+                if (n % divisor == 0) {
+                     false;
+                };
+
+                divisor := divisor + 2;
+            };
+    };
+     true;
+   };
 };
+
+print(is_prime(73));

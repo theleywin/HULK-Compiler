@@ -16,6 +16,18 @@ use codegen::CodeGenerator;
 use std::path::Path;
 
 fn main() {
+    // Texto grande y bonito en verde que dice "HULK"
+    println!("\x1b[32m"); // Cambia el color a verde
+    println!(r#"
+██╗  ██╗██╗   ██╗██╗     ██╗  ██╗
+██║  ██║██║   ██║██║     ██║ ██╔╝
+███████║██║   ██║██║     █████╔╝ 
+██╔══██║██║   ██║██║     ██╔═██╗ 
+██║  ██║╚██████╔╝███████╗██║  ██╗
+╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
+"#);
+    println!("\x1b[0m"); // Restaura el color
+
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
         eprintln!("Usage: {} <input_file>", args[0]);
@@ -33,12 +45,10 @@ fn main() {
     let parser = Parser::new(missplacement);
     match parser.parse(&input) {
         Ok(mut expr) => {
-            println!("Syntactic Analyzer OK");
             let mut semantic_analyzer = SemanticAnalyzer::new();
             let result = semantic_analyzer.analyze(&mut expr);
             match result {
                 Ok(_) => {
-                    println!("Semantic Analyzer OK");
                 }
                 Err(errors) => {
                     println!("\x1b[31mSemantic Errors:");
@@ -49,8 +59,6 @@ fn main() {
                     std::process::exit(3);
                 }
             }
-
-            println!("\nGenerating LLVM IR...");
             let mut codegen = CodeGenerator::new();
             let llvm_ir = codegen.generate(&mut expr);
 
@@ -62,9 +70,7 @@ fn main() {
             // Write IR to hulk/output.ll
             let ir_path = "hulk/output.ll";
             std::fs::write(ir_path, &llvm_ir).expect("Failed to write LLVM IR");
-            println!("LLVM IR written to {}", ir_path);
 
-            println!("\nCompiling to native executable...");
             let executable = if cfg!(windows) {
                 "hulk/output.exe"
             } else {
@@ -77,7 +83,6 @@ fn main() {
                 .expect("Failed to compile with clang");
 
             if status.success() {
-                println!("Executable built at {}", executable);
             } else {
                 eprintln!("\x1b[31mCompilation failed\x1b[0m");
             }
