@@ -19,6 +19,7 @@ impl CodeGenerator {
         let mut module_code: Vec<String> = vec![];
         generate_header(&mut module_code);
         declare_printf(&mut module_code);
+        generate_runtime_declarations(&mut module_code);
         module_code.push("".into());
 
         let mut body_context = CodeGenContext::new();
