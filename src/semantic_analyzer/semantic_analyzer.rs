@@ -82,7 +82,7 @@ impl SemanticAnalyzer {
         self.types_tree.get_type(built_in.as_str()).unwrap()
     }
 
-    pub fn get_functions_names_and_signatures(&mut self, node: &Program) {
+    pub fn get_functions_names_and_signatures(&mut self, node: &mut Program) {
         for statement in &node.statements {
                 match statement {
                     Statement::StatementFunctionDef(node) => {
@@ -104,8 +104,11 @@ impl SemanticAnalyzer {
                         if self.context.declared_functions.contains_key(&node.name) {
                             self.new_error(SemanticError::RedefinitionOfFunction(node.name.clone()));
                         } else {
-
-                            self.context.declared_functions.insert(node.name.clone(), FunctionInfo::new(node.name.clone(), arg_types.clone(),self.types_tree.get_type(&func_return).unwrap().type_name));
+                            if let Some(func_type) = self.types_tree.get_type(&func_return) {
+                                self.context.declared_functions.insert(node.name.clone(), FunctionInfo::new(node.name.clone(), arg_types.clone(), func_type.type_name));
+                            } else {
+                                self.context.declared_functions.insert(node.name.clone(), FunctionInfo::new(node.name.clone(), arg_types.clone(), self.get_built_in_types(&BuiltInTypes::Unknown).type_name));
+                            }
                         }
                     },
                     _ => continue ,
@@ -113,7 +116,7 @@ impl SemanticAnalyzer {
         }
     }
 
-    pub fn get_types_definitions(&mut self, node: &Program) {
+    pub fn get_types_definitions(&mut self, node: &mut Program) {
         for statement in &node.statements {
             match statement {
                 Statement::StatementTypeDef(type_def) => {
@@ -179,19 +182,13 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
     fn visit_for_loop(&mut self, node: &mut ForNode) -> TypeNode {
         self.enter_scope();
         self.context.symbols.insert(node.variable.clone(), "Number".to_string());
-        if let Expression::FunctionCall(func_call) = node.iterable.as_ref() {
-            if func_call.function_name == "range" && func_call.arguments.len() == 2 {
-                for (index, arg) in func_call.arguments.iter().enumerate() {
-                    let arg_type = arg.clone().accept(self);
-                    if arg_type.type_name != "Number" {
-                        self.new_error(SemanticError::InvalidTypeArgument("function".to_string(), arg_type.type_name.clone(), "Number".to_string(), index,"range".to_string()));
-                    }
-                }
-            } else {
-                self.new_error(SemanticError::InvalidIterable(func_call.function_name.clone(),func_call.arguments.len()));
-            }
-        } else  {
-            self.new_error(SemanticError::UnknownError("Error: for only accepts range(x,y) iterable function.".to_string()));
+        let start_type = node.start.accept(self);
+        let end_type = node.end.accept(self);
+        if start_type.type_name != "Number" {
+            self.new_error(SemanticError::InvalidTypeArgument("for loop".to_string(), start_type.type_name.clone(), "Number".to_string(), 0,"range".to_string()));
+        }
+        if end_type.type_name != "Number" {
+            self.new_error(SemanticError::InvalidTypeArgument("for loop".to_string(), end_type.type_name.clone(), "Number".to_string(), 1,"range".to_string()));
         }
         let return_type = node.body.accept(self);
         self.exit_scope();
@@ -207,7 +204,7 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                     self.context.symbols.insert(id.value.clone(), new_type.type_name.clone());
                     node.set_type(new_type.clone());
                     new_type
-                }
+                }   
                 else {
                     self.new_error(SemanticError::UndefinedIdentifier(id.value.clone()));
                     self.get_built_in_types(&BuiltInTypes::Unknown)
@@ -336,7 +333,7 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                                 }
                                 if let Some(func_type_node) = self.types_tree.get_type(&func.return_type){
                                     node.set_type(func_type_node.clone());
-                                    return func_type_node
+                                    return func_type_node.clone()
                                 } else {
                                     self.new_error(SemanticError::UndefinedType(func.return_type.clone()));
                                     return self.get_built_in_types(&BuiltInTypes::Unknown)
@@ -414,13 +411,11 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                     self.get_built_in_types(&BuiltInTypes::Unknown)
                 }
             },
-            OperatorToken::NEQ |
+
             OperatorToken::GT |
             OperatorToken::GTE |
             OperatorToken::LT |
-            OperatorToken::LTE |
-            OperatorToken::EQ |
-            OperatorToken::NEG => {
+            OperatorToken::LTE  => {
                 if left_type == self.get_built_in_types(&BuiltInTypes::Number) && right_type == self.get_built_in_types(&BuiltInTypes::Number) {
                     node.set_type(self.get_built_in_types(&BuiltInTypes::Boolean));
                     self.get_built_in_types(&BuiltInTypes::Boolean)
@@ -428,16 +423,33 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                     self.new_error(SemanticError::InvalidBinaryOperation(left_type, right_type,node.operator.clone()));
                     self.get_built_in_types(&BuiltInTypes::Unknown)
                 }
-            }
-            OperatorToken::CONCAT => {
-                if left_type == self.get_built_in_types(&BuiltInTypes::String) || left_type == self.get_built_in_types(&BuiltInTypes::Boolean) || left_type == self.get_built_in_types(&BuiltInTypes::Number) && right_type == self.get_built_in_types(&BuiltInTypes::String) || right_type == self.get_built_in_types(&BuiltInTypes::Boolean) || right_type == self.get_built_in_types(&BuiltInTypes::Number) {
-                    node.set_type(self.get_built_in_types(&BuiltInTypes::String));
-                    self.get_built_in_types(&BuiltInTypes::String)
+            },
+            OperatorToken::NEQ |
+            OperatorToken::EQ=>{
+                if left_type == self.get_built_in_types(&BuiltInTypes::String) && right_type == self.get_built_in_types(&BuiltInTypes::String) ||
+                   left_type == self.get_built_in_types(&BuiltInTypes::Boolean) && right_type == self.get_built_in_types(&BuiltInTypes::Boolean) ||
+                   left_type == self.get_built_in_types(&BuiltInTypes::Number) && right_type == self.get_built_in_types(&BuiltInTypes::Number) {
+                    node.set_type(self.get_built_in_types(&BuiltInTypes::Boolean));
+                    self.get_built_in_types(&BuiltInTypes::Boolean)
                 } else {
                     self.new_error(SemanticError::InvalidBinaryOperation(left_type, right_type,node.operator.clone()));
                     self.get_built_in_types(&BuiltInTypes::Unknown)
                 }
-
+            },
+            
+           OperatorToken::CONCAT => {
+                let string_type = self.get_built_in_types(&BuiltInTypes::String);
+                if left_type == string_type && right_type == string_type {
+                    node.set_type(string_type.clone());
+                    string_type
+                } else {
+                    self.new_error(SemanticError::InvalidBinaryOperation(
+                        left_type, 
+                        right_type,
+                        node.operator.clone()
+                    ));
+                    self.get_built_in_types(&BuiltInTypes::Unknown)
+                }
             },
             OperatorToken::AND |
             OperatorToken::OR => {
@@ -491,11 +503,11 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
             self.new_error(SemanticError::InvalidConditionType(if_condition_type));
         }
         let if_expr_type = node.if_expression.accept(self);
-        let mut result_lca = if_expr_type;
-        for (condition , body_expr) in node.elifs.iter() {
-            let expr_type = body_expr.clone().accept(self);
+        let mut result_lca = if_expr_type.clone();
+        for (condition , body_expr) in node.elifs.iter_mut() {
+            let expr_type = body_expr.accept(self);
             if let Some(cond) = condition {
-                let cond_type = cond.clone().accept(self);
+                let cond_type = cond.accept(self);
                 if cond_type != self.get_built_in_types(&BuiltInTypes::Boolean) {
                     self.new_error(SemanticError::InvalidConditionType(cond_type));
                 }

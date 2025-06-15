@@ -66,9 +66,10 @@ impl Visitor<String> for PrinterVisitor {
     }
     fn visit_for_loop(&mut self, node: &mut ForNode) -> String {
         let variable = &node.variable;
-        let iterable = node.iterable.accept(self);
+        let start = node.start.accept(self);
+        let end = node.end.accept(self);
         let body = node.body.accept(self);
-        format!("for ({} in {}) {{\n{}\n}}", variable, iterable , body)
+        format!("for ({} in range({}, {})) {{\n{}\n}}", variable, start, end, body)
     }
     fn visit_code_block(&mut self, node: &mut BlockNode) -> String {
         let expressions: Vec<String> = node.expression_list.expressions.iter_mut()

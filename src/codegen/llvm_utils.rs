@@ -1,11 +1,23 @@
 use super::context::CodeGenContext;
 
 /// Emit the global string constants and the printf declaration.
-pub fn declare_printf(output: &mut Vec<String>) {
+pub fn declare_printf(output: &mut Vec<String>,  context: &mut CodeGenContext) {
+    output.push("@PI = constant double 0x400921FB54442D18".into()); // π
+    output.push("@E = constant double 0x4005BF0A8B145769".into()); // e
+    context.add_global_constant("PI");
+    context.add_global_constant("E");
     output.push(r#"@.str.f = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1"#.into());
     output.push(r#"@.str.d = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1"#.into());
     output.push(r#"@.str.s = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1"#.into());
-    output.push("declare i32 @printf(i8* nocapture readonly, ...) nounwind".into());
+    output.push(r#"@.true_str = private  constant [6 x i8] c"true\0A\00", align 1"#.into());
+    output.push(r#"@.false_str = private constant [7 x i8] c"false\0A\00", align 1"#.into());
+    output.push(r#"@.newline = private unnamed_addr constant [2 x i8] c"\0A\00", align 1"#.into());
+    output.push("declare i32 @printf(ptr, ...)".into());
+    output.push("declare i32 @strlen( ptr )".into());
+    output.push("declare ptr @strcpy(ptr,ptr)".into());
+    output.push("declare ptr @strcat(ptr,ptr)".into());
+    output.push("declare i32 @strcmp(ptr ,ptr)".into());
+    output.push("declare i8* @malloc(i64)".into());
 }
 
 /// Emit a call to printf with the given format and value.
@@ -57,7 +69,7 @@ pub fn to_llvm_type(type_node: String) -> String {
     match type_node.as_str() {
         "Number" => "double".to_string(),
         "Boolean" => "i1".to_string(),
-        "String" => "i8*".to_string(),
+        "String" => "ptr".to_string(),
         _ => "i8*".to_string(), // Default to pointer type for unknown types
     }
 }

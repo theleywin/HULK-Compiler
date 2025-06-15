@@ -248,9 +248,8 @@ WhileLoop: Expression = {
     While LParen <condition:Expr> RParen <body:CompositeExpr> => Expression::new_while_loop(condition,body),
 };
 
-//Maybe catch these errors in a different place (Like Semantic Analysis)
 ForLoop: Expression = {
-    For LParen <id:Identifier> In <call:CompositeExpr> RParen <body:CompositeExpr> => Expression::new_for_loop(id, call, body)
+    For LParen <id:Identifier> In "range" LParen <start:Expr> Comma <end:Expr> RParen RParen <body:CompositeExpr> => Expression::new_for_loop(id, start, end, body)
 };
 
 IfElse: Expression = {

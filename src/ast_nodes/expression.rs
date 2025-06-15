@@ -61,8 +61,8 @@ impl Expression {
         Expression::WhileLoop(WhileNode::new(condition, body))
     }
 
-    pub fn new_for_loop(variable: String, iterable: Expression , body: Expression) -> Self {
-        Expression::ForLoop(ForNode::new(variable, iterable, body))
+    pub fn new_for_loop(variable: String, start: Expression , end: Expression, body: Expression) -> Self {
+        Expression::ForLoop(ForNode::new(variable, start, end, body))
     }
 
     pub fn new_code_block(expression_list: ExpressionList) -> Self {
