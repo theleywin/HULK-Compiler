@@ -7,15 +7,17 @@ use crate::parser::ProgramParser;
 
 pub struct Parser {
     core: ProgramParser,
+    pub missplacement: i32,
 }
 impl Parser {
-    pub fn new() -> Self {
+    pub fn new(missplacement : i32) -> Self {
         Parser {
             core: ProgramParser::new(),
+            missplacement: missplacement,
         }
     }
 
-    fn offset_to_line_col(input: &str, offset: usize) -> (usize, usize) {
+    fn offset_to_line_col(input: &str, offset: usize, missplacement: i32) -> (usize, usize) {
         let mut line = 1;
         let mut col = 1;
         let mut current_offset = 0;
@@ -35,51 +37,11 @@ impl Parser {
             current_offset += c.len_utf8();
         }
 
-        (line, col)
+        (line - missplacement as usize, col)
     }
 
     fn token_to_human_readable(token: &str) -> String {
         match token {
-            // Keywords
-            "Function" => "`function`".to_string(),
-            "Type" => "`type`".to_string(),
-            "Let" => "`let`".to_string(),
-            "In" => "`in`".to_string(),
-            "If" => "`if`".to_string(),
-            "Else" => "`else`".to_string(),
-            "Elif" => "`elif`".to_string(),
-            "While" => "`while`".to_string(),
-            "For" => "`for`".to_string(),
-            "Inherits" => "`inherits`".to_string(),
-            "New" => "`new`".to_string(),
-            "Print" => "`print`".to_string(),
-            "True" => "`true`".to_string(),
-            "False" => "`false`".to_string(),
-
-            // Operators
-            "Assign" => "`=`".to_string(),
-            "DestructiveAssignOp" => "`:=`".to_string(),
-            "Arrow" => "`=>`".to_string(),
-            "LogicalAndOp" => "`&`".to_string(),
-            "LogicalOrOp" => "`|`".to_string(),
-            "DotOp" => "`.`".to_string(),
-            "UnaryOp" => "`!` or `-`".to_string(),
-            "PowOp" => "`^`".to_string(),
-            "FactorOp" => "`*`, `/`, or `%`".to_string(),
-            "TermOp" => "`+`, `-`, or `@`".to_string(),
-            "ComparisonOp" => "`>`, `>=`, `<`, or `<=`".to_string(),
-            "EqualityOp" => "`==` or `!=`".to_string(),
-
-            // Delimiters
-            "Semicolon" => "`;`".to_string(),
-            "LParen" => "`(`".to_string(),
-            "RParen" => "`)`".to_string(),
-            "LBrace" => "`{`".to_string(),
-            "RBrace" => "`}`".to_string(),
-            "Comma" => "`,`".to_string(),
-            "Colon" => "`:`".to_string(),
-
-            // Default fallback
             _ => token
                 .replace('"', "")
                 .replace('\\', "")
@@ -96,7 +58,7 @@ impl Parser {
             Ok(program) => Ok(program),
             Err(err) => match err {
                 ParseError::InvalidToken { location } => {
-                    let (line, col) = Self::offset_to_line_col(input, location);
+                    let (line, col) = Self::offset_to_line_col(input, location, self.missplacement);
                     errors.push(format!(
                         "\x1b[31mSyntax Error (line {}, column {}): Invalid token\x1b[0m",
                         line, col
@@ -104,7 +66,7 @@ impl Parser {
                     Err(errors)
                 }
                 ParseError::UnrecognizedEof { location, expected } => {
-                    let (line, col) = Self::offset_to_line_col(input, location);
+                    let (line, col) = Self::offset_to_line_col(input, location, self.missplacement);
                     let expected_clean: Vec<String> = expected
                         .iter()
                         .map(|s| Self::token_to_human_readable(s))
@@ -125,7 +87,7 @@ impl Parser {
                     Err(errors)
                 }
                 ParseError::UnrecognizedToken { token, expected } => {
-                    let (line, col) = Self::offset_to_line_col(input, token.0);
+                    let (line, col) = Self::offset_to_line_col(input, token.0, self.missplacement);
                     let token_value = &token.1.1;
                     let expected_clean: Vec<String> = expected
                         .iter()
@@ -147,7 +109,7 @@ impl Parser {
                     Err(errors)
                 }
                 ParseError::ExtraToken { token } => {
-                    let (line, col) = Self::offset_to_line_col(input, token.0);
+                    let (line, col) = Self::offset_to_line_col(input, token.0, self.missplacement);
                     errors.push(format!(
                         "\x1b[31mSyntax Error (line {}, column {}): Extra token `{}`\x1b[0m",
                         line, col, token.1.1
