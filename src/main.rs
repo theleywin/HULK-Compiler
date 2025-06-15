@@ -15,17 +15,14 @@ use codegen::CodeGenerator;
 
 fn main() {
     let input = r#"
-        for (pene in range(1,5)){
-            let a = "sexo" in {
-                let b = a @ " muy fuerte" in { 
-                    let c = b @ " y muy duro" in {
-                        print(c); 
-                    };
-                };
+        function fac(x : Number) : Number {
+            if(x == 0 ){
+                1;
+            } else {
+                x * fac(x - 1);
             };
-            print( pene );
         };
-        
+        print(fac(5));
     "#;
 
      let parser = Parser::new();
@@ -47,6 +44,7 @@ fn main() {
                     println!("\x1b[0m");
                 }
             }
+
             // Generate code after semantic analysis
             println!("\nGenerating LLVM IR...");
             let mut codegen = CodeGenerator::new();
