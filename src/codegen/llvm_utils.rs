@@ -1,7 +1,11 @@
 use super::context::CodeGenContext;
 
 /// Emit the global string constants and the printf declaration.
-pub fn declare_printf(output: &mut Vec<String>) {
+pub fn declare_printf(output: &mut Vec<String>,  context: &mut CodeGenContext) {
+    output.push("@PI = constant double 0x400921FB54442D18".into()); // π
+    output.push("@E = constant double 0x4005BF0A8B145769".into()); // e
+    context.add_global_constant("PI");
+    context.add_global_constant("E");
     output.push(r#"@.str.f = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1"#.into());
     output.push(r#"@.str.d = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1"#.into());
     output.push(r#"@.str.s = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1"#.into());
