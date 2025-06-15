@@ -503,7 +503,7 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
             self.new_error(SemanticError::InvalidConditionType(if_condition_type));
         }
         let if_expr_type = node.if_expression.accept(self);
-        let mut result_lca = if_expr_type.clone();
+        let result = if_expr_type.clone();
         for (condition , body_expr) in node.elifs.iter_mut() {
             let expr_type = body_expr.accept(self);
             if let Some(cond) = condition {
@@ -512,15 +512,14 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                     self.new_error(SemanticError::InvalidConditionType(cond_type));
                 }
             }
-            if result_lca != expr_type {
-                result_lca = self.types_tree.find_lca(&result_lca, &expr_type);
-                if result_lca.type_name == "Unknown" {
+            if result != expr_type {
+                
                     self.new_error(SemanticError::UnknownError("Incompatible types in if-else branches".to_string()));
-                }
+
             }
         }
-        node.set_type(result_lca.clone());
-        result_lca
+        node.set_type(result.clone());
+        result
     }
     
     fn visit_let_in(&mut self, node: &mut LetInNode) -> TypeNode {
