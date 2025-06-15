@@ -13,12 +13,21 @@ lalrpop_mod!(pub parser);
 
 use crate::builtin::FunctionInjector;
 use codegen::CodeGenerator;
+use std::path::Path;
 
 fn main() {
-    let raw_input = r#"exp(5);"#;
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() < 2 {
+        eprintln!("Usage: {} <input_file>", args[0]);
+        std::process::exit(1);
+    }
+
+    let filename = &args[1];
+    let raw_input = std::fs::read_to_string(filename)
+        .expect(&format!("Failed to read input file: {}", filename));
 
     let function_injector = FunctionInjector::new();
-    let input = function_injector.inject_code(raw_input);
+    let input = function_injector.inject_code(&raw_input);
     let missplacement = function_injector.get_builtin_functions_code_lines() as i32;
 
     let parser = Parser::new(missplacement);
@@ -46,23 +55,30 @@ fn main() {
 
             println!("\x1b[32mGenerated LLVM IR:\n{}\x1b[0m", llvm_ir);
 
-            std::fs::write("output.ll", &llvm_ir).expect("Failed to write LLVM IR");
-            println!("LLVM IR written to output.ll");
+            // Create hulk directory if it doesn't exist
+            if !Path::new("hulk").exists() {
+                std::fs::create_dir("hulk").expect("Failed to create hulk directory");
+            }
+            
+            // Write IR to hulk/output.ll
+            let ir_path = "hulk/output.ll";
+            std::fs::write(ir_path, &llvm_ir).expect("Failed to write LLVM IR");
+            println!("LLVM IR written to {}", ir_path);
 
-            println!("\nCompiling and running...");
+            println!("\nCompiling to native executable...");
+            let executable = if cfg!(windows) {
+                "hulk/output.exe"
+            } else {
+                "hulk/output"
+            };
+            
             let status = std::process::Command::new("clang")
-                .args(&["output.ll", "-o", "output"])
+                .args(&[ir_path, "runtime.c", "-o", executable])
                 .status()
                 .expect("Failed to compile with clang");
 
             if status.success() {
-                let output = std::process::Command::new("./output")
-                    .output()
-                    .expect("Failed to run program");
-                println!(
-                    "\x1b[34mProgram output:\n{}\x1b[0m",
-                    String::from_utf8_lossy(&output.stdout)
-                );
+                println!("Executable built at {}", executable);
             } else {
                 eprintln!("\x1b[31mCompilation failed\x1b[0m");
             }
