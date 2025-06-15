@@ -53,13 +53,11 @@ fn main() {
             let mut codegen = CodeGenerator::new();
             let llvm_ir = codegen.generate(&mut expr);
 
-            println!("\x1b[32mGenerated LLVM IR:\n{}\x1b[0m", llvm_ir);
-
             // Create hulk directory if it doesn't exist
             if !Path::new("hulk").exists() {
                 std::fs::create_dir("hulk").expect("Failed to create hulk directory");
             }
-            
+
             // Write IR to hulk/output.ll
             let ir_path = "hulk/output.ll";
             std::fs::write(ir_path, &llvm_ir).expect("Failed to write LLVM IR");
@@ -71,9 +69,9 @@ fn main() {
             } else {
                 "hulk/output"
             };
-            
+
             let status = std::process::Command::new("clang")
-                .args(&[ir_path, "runtime.c", "-o", executable])
+                .args(&[ir_path, "runtime.c", "-o", executable, "-lm"]) 
                 .status()
                 .expect("Failed to compile with clang");
 
