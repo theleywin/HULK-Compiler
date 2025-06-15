@@ -46,6 +46,7 @@ fn main() {
                         println!("{}", err.message());
                     }
                     println!("\x1b[0m");
+                    std::process::exit(3);
                 }
             }
 
@@ -85,8 +86,9 @@ fn main() {
             println!("\x1b[31mSyntax Errors:");
             for err in errors.iter() {
                 println!("{}", err);
-            }
+            }   
             println!("\x1b[0m");
+             std::process::exit(2);
         }
     }
 }
