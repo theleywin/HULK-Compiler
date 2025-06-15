@@ -12,6 +12,7 @@ pub struct CodeGenContext {
     pub globals: Vec<String>,
     pub global_constants: HashSet<String>,
     pub str_constants: Vec<String>,
+    pub str_counter: usize,
     pub temp_counter: usize,
     pub id: usize,
     scope_id: i32,
@@ -36,6 +37,7 @@ impl Default for CodeGenContext {
             globals: Vec::new(),
             global_constants: HashSet::new(),
             str_constants: Vec::new(),
+            str_counter: 0,
             temp_counter: 1,
             id: 1,
             scope_id: 0,
@@ -139,19 +141,25 @@ impl CodeGenContext {
         name
     }
 
-    pub fn clean_and_join(input: String) -> String {
-        input.chars()
-            .map(|c| if c.is_whitespace() { '_' } else { c })
-            .collect()
-    }
-
     pub fn add_str_const(&mut self, value: String, len: usize) -> String {
-        let constant_name = Self::clean_and_join(value.clone());
-        let line = format!("@.str_{} = private unnamed_addr constant [{} x i8] c\"{}\\00\"", constant_name, len + 1, value);
+        let constant_name = format!("@.str.{}", self.str_counter);
+        self.str_counter += 1;
+        
+        let escaped_value = value
+            .replace('\\', "\\\\")
+            .replace('\"', "\\\"")
+            .replace('\n', "\\0A")
+            .replace('\0', "\\00");
+        
+        let line = format!(
+            "{} = private unnamed_addr constant [{} x i8] c\"{}\\00\"", 
+            constant_name, len + 1, escaped_value
+        );
+        
         if !self.str_constants.contains(&line) { 
             self.str_constants.push(line);
         }
-        format!("@.str_{}", constant_name)
+        constant_name
     }
     
     pub fn add_global_declaration(&mut self, decl: String) {

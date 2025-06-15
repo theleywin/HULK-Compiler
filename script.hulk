@@ -1,9 +1,3 @@
-for (pene in range(1,5)){
-            
-            let a ="sexo" in {
-                let b = a @ " muy fuerte" in{ 
-                    print (b)
-                };
-            };
-            print( pene )
-        };
+let name ="Diego" in {
+print(name @ " acaba los types tú puedes");
+};
