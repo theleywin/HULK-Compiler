@@ -17,14 +17,8 @@ endif
 
 all: execute
 
-# Ensure required tools are installed
-check-deps:
-	@command -v llvm-config >/dev/null 2>&1 || (echo "Error: llvm-config not found. Please install LLVM/Clang." >&2; exit 1)
-	@command -v clang        >/dev/null 2>&1 || (echo "Error: clang not found. Please install LLVM/Clang."  >&2; exit 1)
-	@command -v cargo        >/dev/null 2>&1 || (echo "Error: cargo not found. Please install Rust toolchain." >&2; exit 1)
-
 # Build IR + native executable
-compile: check-deps
+compile:
 	@echo "→ Cleaning previous build..."
 	@$(RM) hulk || true
 	@$(MKDIR_P) hulk
