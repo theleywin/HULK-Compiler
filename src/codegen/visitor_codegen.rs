@@ -83,14 +83,24 @@ impl Visitor<GeneratorResult> for CodeGenerator {
     }
 
     fn visit_identifier(&mut self, node: &mut IdentifierNode) -> GeneratorResult {
-       let value = node.value.clone();
+        let value = node.value.clone();
         let llvm_type = to_llvm_type(node.node_type.clone().unwrap().type_name);
-       let register = self.context.new_temp(llvm_type.clone());
-        self.context.add_line(format!(
-            "{} = load {}, ptr {}",
-            register, llvm_type.clone(), self.context.get_variable(value)
-        ));
-       GeneratorResult::new(register, llvm_type.clone())
+        if self.context.is_global_constant(&value) {
+
+            let register = self.context.new_temp(llvm_type.clone());
+            let global_ref = format!("@{}", value);
+            self.context.add_line(format!(
+                "{} = load {}, ptr {}",register, llvm_type, global_ref // Usar directamente el nombre (@PI, @E)
+            ));
+             GeneratorResult::new(register, llvm_type)
+        } 
+        else {
+            let register = self.context.new_temp(llvm_type.clone());
+            self.context.add_line(format!(
+                 "{} = load {}, ptr {}", register, llvm_type.clone(), self.context.get_variable(value)
+             ));
+             GeneratorResult::new(register, llvm_type.clone())
+        }
     }
 
     fn visit_function_call(&mut self,  node: &mut FunctionCallNode) -> GeneratorResult {
@@ -375,7 +385,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         let operand_val = node.operand.accept(self);
         let op = node.operator.clone();
         match op {
-            OperatorToken::MINUS => {
+            OperatorToken::NEG => {
                 let temp = self.context.new_temp("Number".to_string());
                 self.context.add_line(format!("{} = fsub double 0.0, {}", temp, operand_val.register));
                 GeneratorResult::new(temp, "double".to_string())

@@ -10,6 +10,7 @@ pub enum Type {
 pub struct CodeGenContext {
     pub code: Vec<String>,
     pub globals: Vec<String>,
+    pub global_constants: HashSet<String>,
     pub str_constants: Vec<String>,
     pub temp_counter: usize,
     pub id: usize,
@@ -33,6 +34,7 @@ impl Default for CodeGenContext {
         Self {
             code: Vec::new(),
             globals: Vec::new(),
+            global_constants: HashSet::new(),
             str_constants: Vec::new(),
             temp_counter: 1,
             id: 1,
@@ -69,6 +71,13 @@ impl CodeGenContext {
         result.extend(std::mem::take(&mut self.globals));
         result.extend(std::mem::take(&mut self.code));
         result
+    }
+    pub fn add_global_constant(&mut self, name: &str) {
+        self.global_constants.insert(name.to_string());
+    }
+    
+    pub fn is_global_constant(&self, name: &str) -> bool {
+        self.global_constants.contains(name)
     }
 
     pub fn take_globals(&mut self) -> Vec<String> {

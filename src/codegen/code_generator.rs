@@ -18,7 +18,7 @@ impl CodeGenerator {
     pub fn generate(&mut self, program: &mut Program) -> String {
         let mut module_code: Vec<String> = vec![];
         generate_header(&mut module_code);
-        declare_printf(&mut module_code);
+        declare_printf(&mut module_code, &mut self.context);
         generate_runtime_declarations(&mut module_code);
         module_code.push("".into());
 
