@@ -437,15 +437,19 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                 }
             },
             
-            OperatorToken::CONCAT => {
-                if left_type == self.get_built_in_types(&BuiltInTypes::String) || left_type == self.get_built_in_types(&BuiltInTypes::Boolean) || left_type == self.get_built_in_types(&BuiltInTypes::Number) && right_type == self.get_built_in_types(&BuiltInTypes::String) || right_type == self.get_built_in_types(&BuiltInTypes::Boolean) || right_type == self.get_built_in_types(&BuiltInTypes::Number) {
-                    node.set_type(self.get_built_in_types(&BuiltInTypes::String));
-                    self.get_built_in_types(&BuiltInTypes::String)
+           OperatorToken::CONCAT => {
+                let string_type = self.get_built_in_types(&BuiltInTypes::String);
+                if left_type == string_type && right_type == string_type {
+                    node.set_type(string_type.clone());
+                    string_type
                 } else {
-                    self.new_error(SemanticError::InvalidBinaryOperation(left_type, right_type,node.operator.clone()));
+                    self.new_error(SemanticError::InvalidBinaryOperation(
+                        left_type, 
+                        right_type,
+                        node.operator.clone()
+                    ));
                     self.get_built_in_types(&BuiltInTypes::Unknown)
                 }
-
             },
             OperatorToken::AND |
             OperatorToken::OR => {
