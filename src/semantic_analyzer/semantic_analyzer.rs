@@ -411,13 +411,11 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                     self.get_built_in_types(&BuiltInTypes::Unknown)
                 }
             },
-            OperatorToken::NEQ |
+
             OperatorToken::GT |
             OperatorToken::GTE |
             OperatorToken::LT |
-            OperatorToken::LTE |
-            OperatorToken::EQ |
-            OperatorToken::NEG => {
+            OperatorToken::LTE  => {
                 if left_type == self.get_built_in_types(&BuiltInTypes::Number) && right_type == self.get_built_in_types(&BuiltInTypes::Number) {
                     node.set_type(self.get_built_in_types(&BuiltInTypes::Boolean));
                     self.get_built_in_types(&BuiltInTypes::Boolean)
@@ -425,7 +423,20 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                     self.new_error(SemanticError::InvalidBinaryOperation(left_type, right_type,node.operator.clone()));
                     self.get_built_in_types(&BuiltInTypes::Unknown)
                 }
-            }
+            },
+            OperatorToken::NEQ |
+            OperatorToken::EQ=>{
+                if left_type == self.get_built_in_types(&BuiltInTypes::String) && right_type == self.get_built_in_types(&BuiltInTypes::String) ||
+                   left_type == self.get_built_in_types(&BuiltInTypes::Boolean) && right_type == self.get_built_in_types(&BuiltInTypes::Boolean) ||
+                   left_type == self.get_built_in_types(&BuiltInTypes::Number) && right_type == self.get_built_in_types(&BuiltInTypes::Number) {
+                    node.set_type(self.get_built_in_types(&BuiltInTypes::Boolean));
+                    self.get_built_in_types(&BuiltInTypes::Boolean)
+                } else {
+                    self.new_error(SemanticError::InvalidBinaryOperation(left_type, right_type,node.operator.clone()));
+                    self.get_built_in_types(&BuiltInTypes::Unknown)
+                }
+            },
+            
             OperatorToken::CONCAT => {
                 if left_type == self.get_built_in_types(&BuiltInTypes::String) || left_type == self.get_built_in_types(&BuiltInTypes::Boolean) || left_type == self.get_built_in_types(&BuiltInTypes::Number) && right_type == self.get_built_in_types(&BuiltInTypes::String) || right_type == self.get_built_in_types(&BuiltInTypes::Boolean) || right_type == self.get_built_in_types(&BuiltInTypes::Number) {
                     node.set_type(self.get_built_in_types(&BuiltInTypes::String));
