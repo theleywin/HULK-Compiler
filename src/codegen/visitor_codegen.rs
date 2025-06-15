@@ -84,7 +84,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
 
     fn visit_identifier(&mut self, node: &mut IdentifierNode) -> GeneratorResult {
        let value = node.value.clone();
-       let llvm_type = to_llvm_type(node.node_type.clone().unwrap().type_name);
+        let llvm_type = to_llvm_type(node.node_type.clone().unwrap().type_name);
        let register = self.context.new_temp(llvm_type.clone());
         self.context.add_line(format!(
             "{} = load {}, ptr {}",
@@ -97,13 +97,13 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         let name = node.function_name.clone();
         let llvm_args: Vec<String> = node.arguments.iter().map(|arg| {
             let arg_val = arg.clone().accept(self);
-            let id = self.context.new_id();
-            self.context.add_line(format!("%{} = alloca {}", id.clone(), arg_val.llvm_type));
+            let arg_reg = self.context.new_temp(arg_val.llvm_type.clone());
+            self.context.add_line(format!("{} = alloca {}", arg_reg.clone(), arg_val.llvm_type));
             self.context.add_line(format!(
-                "store {} {}, ptr %{}",
-                arg_val.llvm_type, arg_val.register, id.clone()
+                "store {} {}, ptr {}",
+                arg_val.llvm_type, arg_val.register, arg_reg.clone()
             ));
-            format!("ptr %{}", id)
+            format!("ptr {}", arg_reg)
         }).collect();
         let node_type = to_llvm_type(node.node_type.clone().unwrap().type_name);
         let temp = self.context.new_temp(node_type.clone());
@@ -389,8 +389,77 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         }
     }
 
-    fn visit_if_else(&mut self, _node: &mut IfElseNode) -> GeneratorResult {
-        unimplemented!()
+    fn visit_if_else(&mut self, node: &mut IfElseNode) -> GeneratorResult {
+        let node_type = node.node_type.clone().unwrap().type_name;
+        let node_type = to_llvm_type(node_type.clone());
+        let result_reg = self.context.new_temp(node_type.clone());
+        let exit_id = self.context.new_id();
+        let exit_label = format!("if_else_exit.{}", exit_id);
+        self.context.add_line(format!("{} = alloca {}", result_reg, node_type));
+        let cond_reg = node.condition.accept(self);
+        let if_id = self.context.new_id();
+        let if_true_label = format!("if_true.{}", if_id);
+        let if_false_label = format!("if_false.{}", if_id);
+        self.context.add_line(format!(
+            "br i1 {}, label %{}, label %{}",
+            cond_reg.register, if_true_label, if_false_label
+        ));
+        self.context.add_line(format!("{}:", if_true_label));
+        let if_expr = node.if_expression.accept(self);
+        self.context.add_line(format!(
+            "store {} {}, ptr {}\n",
+            node_type, if_expr.register, result_reg
+        ));
+        self.context.add_line(format!("br label %{}\n\n", exit_label));
+        self.context.add_line(format!("{}:", if_false_label));
+        if node.elifs.len() > 0 {
+            for (cond, expr) in node.elifs.iter_mut() {
+                let elif_id = self.context.new_id();
+                let elif_label = format!("elif_true.{}", elif_id);
+                let elif_false_label = format!("elif_false.{}", elif_id);
+                let elif_cond_reg = if let Some(cond_expr) = cond {
+                    cond_expr.accept(self)
+                } else {
+                    let else_reg = self.context.new_temp("Boolean".to_string());
+                    self.context.add_line(format!(
+                        "{} = add i1 0, 1", else_reg
+                    ));
+                    GeneratorResult::new(else_reg, "i1".to_string())
+                };
+                if let Some(_) = cond {
+                    self.context.add_line(format!(
+                        "br i1 {}, label %{}, label %{}",
+                        elif_cond_reg.register, elif_label, elif_false_label
+                    ));
+                } else {
+                    self.context.add_line(format!("br label %{}\n\n", elif_label));
+                }
+                self.context.add_line(format!("{}:", elif_label));
+                let elif_expr = expr.clone().accept(self);
+                self.context.add_line(format!(
+                    "store {} {}, ptr {}\n",
+                    node_type, elif_expr.register, result_reg
+                ));
+                if let Some(_) = cond {
+                    self.context.add_line(format!("br label %{}\n\n", exit_label));
+                }
+                
+                if let Some(_) = cond {
+                    self.context.add_line(format!("{}:", elif_false_label));
+                } else {
+                    self.context.add_line(format!("br label %{}\n\n", exit_label));
+                }
+            }
+        } else {
+            self.context.add_line(format!("br label %{}\n\n", exit_label));
+        }
+        self.context.add_line(format!("{}:", exit_label));
+        let final_result = self.context.new_temp(node_type.clone());
+        self.context.add_line(format!(
+            "{} = load {}, ptr {}\n",
+            final_result, node_type, result_reg
+        ));
+        GeneratorResult::new(final_result, node_type)
     }
 
     fn visit_let_in(&mut self, node: &mut LetInNode) -> GeneratorResult {

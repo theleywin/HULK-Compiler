@@ -82,7 +82,7 @@ impl SemanticAnalyzer {
         self.types_tree.get_type(built_in.as_str()).unwrap()
     }
 
-    pub fn get_functions_names_and_signatures(&mut self, node: &Program) {
+    pub fn get_functions_names_and_signatures(&mut self, node: &mut Program) {
         for statement in &node.statements {
                 match statement {
                     Statement::StatementFunctionDef(node) => {
@@ -116,7 +116,7 @@ impl SemanticAnalyzer {
         }
     }
 
-    pub fn get_types_definitions(&mut self, node: &Program) {
+    pub fn get_types_definitions(&mut self, node: &mut Program) {
         for statement in &node.statements {
             match statement {
                 Statement::StatementTypeDef(type_def) => {
@@ -333,7 +333,7 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                                 }
                                 if let Some(func_type_node) = self.types_tree.get_type(&func.return_type){
                                     node.set_type(func_type_node.clone());
-                                    return func_type_node
+                                    return func_type_node.clone()
                                 } else {
                                     self.new_error(SemanticError::UndefinedType(func.return_type.clone()));
                                     return self.get_built_in_types(&BuiltInTypes::Unknown)
@@ -488,11 +488,11 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
             self.new_error(SemanticError::InvalidConditionType(if_condition_type));
         }
         let if_expr_type = node.if_expression.accept(self);
-        let mut result_lca = if_expr_type;
-        for (condition , body_expr) in node.elifs.iter() {
-            let expr_type = body_expr.clone().accept(self);
+        let mut result_lca = if_expr_type.clone();
+        for (condition , body_expr) in node.elifs.iter_mut() {
+            let expr_type = body_expr.accept(self);
             if let Some(cond) = condition {
-                let cond_type = cond.clone().accept(self);
+                let cond_type = cond.accept(self);
                 if cond_type != self.get_built_in_types(&BuiltInTypes::Boolean) {
                     self.new_error(SemanticError::InvalidConditionType(cond_type));
                 }

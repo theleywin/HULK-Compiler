@@ -39,19 +39,16 @@ fn main() {
                     println!("\x1b[0m");
                 }
             }
-            // Generate code after semantic analysis
+
             println!("\nGenerating LLVM IR...");
             let mut codegen = CodeGenerator::new();
             let llvm_ir = codegen.generate(&mut expr);
 
-            // Print in green
             println!("\x1b[32mGenerated LLVM IR:\n{}\x1b[0m", llvm_ir);
 
-            // Write to file
             std::fs::write("output.ll", &llvm_ir).expect("Failed to write LLVM IR");
             println!("LLVM IR written to output.ll");
 
-            // Compile and run
             println!("\nCompiling and running...");
             let status = std::process::Command::new("clang")
                 .args(&["output.ll", "-o", "output"])
