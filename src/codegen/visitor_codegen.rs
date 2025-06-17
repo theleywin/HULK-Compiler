@@ -18,7 +18,6 @@ use crate::ast_nodes::type_member_access::{TypeFunctionAccessNode, TypePropAcces
 use crate::ast_nodes::unary_op::UnaryOpNode;
 use crate::ast_nodes::while_loop::WhileNode;
 use crate::ast_nodes::print::PrintNode;
-use crate::codegen::context;
 use crate::tokens::OperatorToken;
 use crate::visitor::accept::Accept;
 use crate::visitor::visitor_trait::Visitor;
@@ -561,12 +560,18 @@ impl Visitor<GeneratorResult> for CodeGenerator {
 
     fn visit_type_instance(&mut self, node: &mut TypeInstanceNode) -> GeneratorResult { 
         let type_constructor = format!("@{}_new", node.type_name);
-        let mut arg_regs = Vec::new();
-        for arg in node.arguments.iter_mut() { 
-            let arg_val = arg.accept(self);
-            arg_regs.push(format!("{} {}", arg_val.llvm_type, arg_val.register));
-        } 
-        let args_str = arg_regs.join(", ");
+        //new
+        let llvm_args: Vec<String> = node.arguments.iter().map(|arg| {
+            let arg_val = arg.clone().accept(self);
+            let arg_reg = self.context.new_temp(arg_val.llvm_type.clone());
+            self.context.add_line(format!("{} = alloca {}", arg_reg.clone(), arg_val.llvm_type));
+            self.context.add_line(format!(
+                "store {} {}, ptr {}",
+                arg_val.llvm_type, arg_val.register, arg_reg.clone()
+            ));
+            format!("ptr {}", arg_reg)
+        }).collect();
+        let args_str = llvm_args.join(", ");
         let result = self.context.new_temp(to_llvm_type(node.node_type.clone().unwrap().type_name));
         self.context.add_line(format!(
             "{} = call ptr {}({})",

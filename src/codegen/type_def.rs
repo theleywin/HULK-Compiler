@@ -1,5 +1,4 @@
-use crate::{ast_nodes::{program::{Program, Statement}, type_def::{TypeDefNode, TypeMember}}, codegen::{llvm_utils::to_llvm_type, CodeGenerator}};
-
+use crate::{ast_nodes::{program::{Program, Statement}, type_def::{TypeDefNode, TypeMember}}, codegen::{llvm_utils::to_llvm_type, CodeGenerator}, visitor::accept::Accept}; // Bring the trait into scope
 // (type, function_name) -> llvm_function_name
 // pub function_member_llvm_names: HashMap<(String, String), String>,
 
@@ -96,8 +95,11 @@ impl CodeGenerator {
         let type_name = node.identifier.clone();
         let type_reg = format!("%{}_type",type_name);
         let mut params_list = Vec::new();
+        self.context.enter_scope();
         for param in node.params.iter() {
-            params_list.push(format!("{} %{}",to_llvm_type(param.signature.clone()),param.name.clone()));
+            let param_name  = format!("%{}.{}",param.name.clone(),self.context.get_scope());
+            params_list.push(format!("ptr {}",param_name.clone()));
+            self.context.add_variable(param_name.clone(), to_llvm_type(param.signature.clone()));
         }
         let params_str = params_list.join(", ");
 
@@ -143,18 +145,36 @@ impl CodeGenerator {
         self.context.add_line(format!("%vtable_ptr = getelementptr {}, ptr {}, i32 0, i32 0", type_reg, mem_temp));
         self.context.add_line(format!("store ptr {}, ptr %vtable_ptr", type_table_instance));
         
-        for param in node.params.iter() {
-            let prop_reg = self.context.new_temp(param.signature.clone());
-
-            let member_key = (type_name.clone(), param.name.clone());
-            let member_index = self.context.type_members_ids.get(&member_key)
-                .expect("Member index not found for type and param name");
-            self.context.add_line(format!(
-                "{} = getelementptr {}, ptr {}, i32 0, i32 {}",
-                prop_reg, type_reg, mem_temp, member_index
-            ));
-            self.context.add_line(format!("store {} %{}, ptr {}" ,to_llvm_type(param.signature.clone()), param.name.clone() , prop_reg));
+        for member in node.members.iter() {
+            match member {
+                TypeMember::Property(assign) => {
+                    let prop_reg = assign.expression.clone().accept(self);
+                    let result_reg = self.context.new_temp(prop_reg.ast_type.clone());
+                    let member_key = (type_name.clone(), assign.identifier.clone());
+                    let member_index = self.context.type_members_ids.get(&member_key)
+                        .expect("Member index not found for type and param name");
+                    self.context.add_line(format!(
+                        "{} = getelementptr {}, ptr {}, i32 0, i32 {}",
+                        result_reg, type_reg, mem_temp, member_index
+                    ));
+                    self.context.add_line(format!("store {} {}, ptr {}", prop_reg.llvm_type, prop_reg.register, result_reg));
+                }
+                _ => continue 
+            }
         }
+
+        // for param in node.params.iter() {
+        //     let prop_reg = self.context.new_temp(param.signature.clone());
+
+        //     let member_key = (type_name.clone(), param.name.clone());
+        //     let member_index = self.context.type_members_ids.get(&member_key)
+        //         .expect("Member index not found for type and param name");
+        //     self.context.add_line(format!(
+        //         "{} = getelementptr {}, ptr {}, i32 0, i32 {}",
+        //         prop_reg, type_reg, mem_temp, member_index
+        //     ));
+        //     self.context.add_line(format!("store {} %registroconresult, ptr {}" ,to_llvm_type(param.signature.clone()), prop_reg)); //Todo
+        // }
         self.context.add_line(format!("ret ptr {}", mem_temp));
         self.context.add_line("}".to_string());
 

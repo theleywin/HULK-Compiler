@@ -1,6 +1,6 @@
 type Point ( x: Number, y: Number ) {
-     x = x + 5;
      y = y;
+     x = x + 5;
 
      getX() : Number => self.x ;
      getY() : Number => self.y ;
@@ -14,4 +14,21 @@ let a = new Point( 5 , 64) in {
      print(a.getX());
      a.setX(7);
      print(a.getX());
+     print(a.getY());
+     print(a.Sum(5 , 40));
 } ;
+
+
+type Person (name: String, age: Number) {
+     name = name;
+     age = age;
+
+     getName() : String => self.name;
+     getAge() : Number => self.age;
+
+     presentation() : String => "Hi! " @ "I'm " @ self.name ;
+};
+
+let pavlo = new Person("paflo", 22) in {
+     print(pavlo.presentation());
+};
