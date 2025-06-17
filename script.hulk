@@ -1,30 +1,17 @@
-function is_prime(n: Number): Boolean {
-   
-    if (n <= 1) {
-         false;
-    }
-    
-    elif (n == 2) {
-         true;
-    }
-    
-    elif (n % 2 == 0) {
-         false;
-    }
-    
-   else {
-         let divisor = 3 in {
-    
-            while (divisor * divisor <= n) {
-                if (n % divisor == 0) {
-                     false;
-                };
+type Point ( x: Number, y: Number ) {
+     x = x + 5;
+     y = y;
 
-                divisor := divisor + 2;
-            };
-    };
-     true;
-   };
+     getX() : Number => self.x ;
+     getY() : Number => self.y ;
+
+     setX(x: Number) : Number => self.x := x ;
+
+     Sum(a: Number, b: Number) : Number => a + b ;
 };
 
-print(is_prime(5));
+let a = new Point( 5 , 64) in {
+     print(a.getX());
+     a.setX(7);
+     print(a.getX());
+} ;

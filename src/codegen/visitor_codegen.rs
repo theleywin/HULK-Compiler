@@ -12,12 +12,13 @@ use crate::ast_nodes::let_in::LetInNode;
 use crate::ast_nodes::literals::{
     BooleanLiteralNode, IdentifierNode, NumberLiteralNode, StringLiteralNode,
 };
-use crate::ast_nodes::type_def::TypeDefNode;
+use crate::ast_nodes::type_def::{TypeDefNode, TypeMember};
 use crate::ast_nodes::type_instance::TypeInstanceNode;
 use crate::ast_nodes::type_member_access::{TypeFunctionAccessNode, TypePropAccessNode};
 use crate::ast_nodes::unary_op::UnaryOpNode;
 use crate::ast_nodes::while_loop::WhileNode;
 use crate::ast_nodes::print::PrintNode;
+use crate::codegen::context;
 use crate::tokens::OperatorToken;
 use crate::visitor::accept::Accept;
 use crate::visitor::visitor_trait::Visitor;
@@ -25,10 +26,11 @@ use crate::visitor::visitor_trait::Visitor;
 pub struct GeneratorResult {
     pub register: String,
     pub llvm_type: String,
+    pub ast_type : String,
 }
 impl GeneratorResult {
-    pub fn new(register: String, llvm_type: String) -> Self {
-        GeneratorResult { register, llvm_type }
+    pub fn new(register: String, llvm_type: String, ast_type: String) -> Self {
+        GeneratorResult { register, llvm_type, ast_type }
     }
 }
 
@@ -40,18 +42,22 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         let return_type = node.return_type.clone();
         let function_global_name = format!("@{}", function_name);
         self.context.enter_scope();
-        let llvm_args: Vec<String> = params.iter().map(|param| {
+        let mut llvm_args: Vec<String> = params.iter().map(|param| {
             let llvm_type = to_llvm_type(param.signature.clone());
             let register_name = format!("%{}.{}", param.name.clone(), self.context.get_scope());
             self.context.add_variable(register_name.clone(), llvm_type.clone());
             format!("ptr {}", register_name)
         }).collect();
+        if let Some (type_name) = self.context.current_self.clone() {
+            self.context.add_variable(format!("%self.{}",self.context.get_scope()), type_name);
+            llvm_args.insert(0, format!("ptr %self.{}",self.context.get_scope()));
+        }
         self.context.add_line(format!("define {} {}({}) {{", to_llvm_type(return_type.clone()), function_global_name, llvm_args.join(", ")));
         let llvm_body = node.body.accept(self);
         self.context.add_line(format!("ret {} {}", llvm_body.llvm_type, llvm_body.register));
         self.context.add_line("}".to_string());
         self.context.exit_scope();
-        GeneratorResult::new(function_global_name, to_llvm_type(return_type.clone()))
+        GeneratorResult::new(function_global_name, to_llvm_type(return_type.clone()),return_type.clone())
     }
 
     fn visit_literal_number(&mut self, node: &mut NumberLiteralNode) -> GeneratorResult {
@@ -62,7 +68,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         let temp = self.context.new_temp("Number".to_string());
         self.context
             .add_line(format!("{} = fadd double 0.0, {}", temp, raw));
-        GeneratorResult::new(temp, "double".to_string())
+        GeneratorResult::new(temp, "double".to_string(),"Number".to_string())
     }
 
     fn visit_literal_boolean(&mut self, node: &mut BooleanLiteralNode) -> GeneratorResult {
@@ -70,7 +76,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         let temp = self.context.new_temp("Boolean".to_string());
         self.context
             .add_line(format!("{} = add i1 {}, 0", temp, value));
-        GeneratorResult::new(temp, "i1".to_string())
+        GeneratorResult::new(temp, "i1".to_string(), "Boolean".to_string())
     }
 
     fn visit_literal_string(&mut self, node: &mut StringLiteralNode) -> GeneratorResult {
@@ -79,27 +85,26 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         let global_const = self.context.add_str_const(node.value.clone(), len.clone());
         self.context.string_literals.insert(temp.clone(), node.value.clone());
         self.context.add_line(format!("{} = getelementptr [{} x i8], ptr {}, i32 0, i32 0",temp,len + 1,global_const));
-        GeneratorResult::new(temp, "ptr".to_string())
+        GeneratorResult::new(temp, "ptr".to_string(), "String".to_string())
     }
 
     fn visit_identifier(&mut self, node: &mut IdentifierNode) -> GeneratorResult {
         let value = node.value.clone();
         let llvm_type = to_llvm_type(node.node_type.clone().unwrap().type_name);
         if self.context.is_global_constant(&value) {
-
-            let register = self.context.new_temp(llvm_type.clone());
+            let register = self.context.new_temp(node.node_type.clone().unwrap().type_name);
             let global_ref = format!("@{}", value);
             self.context.add_line(format!(
                 "{} = load {}, ptr {}",register, llvm_type, global_ref // Usar directamente el nombre (@PI, @E)
             ));
-             GeneratorResult::new(register, llvm_type)
+             GeneratorResult::new(register, llvm_type,node.node_type.clone().unwrap().type_name)
         } 
         else {
             let register = self.context.new_temp(llvm_type.clone());
             self.context.add_line(format!(
                  "{} = load {}, ptr {}", register, llvm_type.clone(), self.context.get_variable(value)
              ));
-             GeneratorResult::new(register, llvm_type.clone())
+             GeneratorResult::new(register, llvm_type.clone(),node.node_type.clone().unwrap().type_name)
         }
     }
 
@@ -121,7 +126,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
             "{} = call {} @{}({})",
             temp, node_type, name, llvm_args.join(", ")
         ));
-        GeneratorResult::new(temp, node_type)
+        GeneratorResult::new(temp, node_type,node.node_type.clone().unwrap().type_name)
 
     }
 
@@ -159,7 +164,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
             "{} = load {}, ptr {}\n",
             return_reg.clone(), node_type.clone(), result_reg.clone()
         ));
-        GeneratorResult::new(return_reg, node_type)
+        GeneratorResult::new(return_reg, node_type,node.node_type.clone().unwrap().type_name)
     }
 
     fn visit_for_loop(&mut self, node: &mut ForNode) -> GeneratorResult {
@@ -232,16 +237,18 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         ));
         self.context.add_line(format!("br label %{}\n\n", for_condition_label));
         self.context.add_line(format!("{}:", for_exit_label));
-        GeneratorResult::new(body_result.register, body_result.llvm_type)
+        self.context.exit_scope();
+        GeneratorResult::new(body_result.register, body_result.llvm_type, body_result.ast_type)
     }
 
     fn visit_code_block(&mut self, node: &mut BlockNode) -> GeneratorResult {
         self.context.enter_scope();
-        let mut result = GeneratorResult::new("".to_string(), "".to_string());
+        let mut result = GeneratorResult::new("".to_string(), "".to_string(),"".to_string());
         for expr in node.expression_list.expressions.iter_mut() {
             let current = expr.accept(self);
             result = current;
         }
+        self.context.exit_scope();
         result
     }
 
@@ -264,7 +271,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
                     "{} = {} double {}, {}",
                     temp, opcode, left_val.register, right_val.register
                 ));
-                GeneratorResult::new(temp, "double".to_string())
+                GeneratorResult::new(temp, "double".to_string(),"Number".to_string())
             }
 
             OperatorToken::MOD => {
@@ -278,7 +285,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
                     "{} = call double @fmod(double {}, double {})",
                     temp, left_val.register, right_val.register
                 ));
-                GeneratorResult::new(temp, "double".to_string())
+                GeneratorResult::new(temp, "double".to_string(),"Number".to_string())
             }
 
             OperatorToken::POW => {
@@ -292,7 +299,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
                     "{} = call double @pow(double {}, double {})",
                     temp, left_val.register, right_val.register
                 ));
-                GeneratorResult::new(temp, "double".to_string())
+                GeneratorResult::new(temp, "double".to_string(),"Number".to_string())
             }
 
             OperatorToken::EQ
@@ -315,7 +322,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
                         "{} = icmp {} i1 {}, {}",
                         temp, cmp_op, left_val.register, right_val.register
                     ));
-                    GeneratorResult::new(temp, "i1".to_string())
+                    GeneratorResult::new(temp, "i1".to_string(),"Boolean".to_string())
                 } else {
                     let cmp_op = match op {
                         OperatorToken::EQ => "oeq",
@@ -332,7 +339,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
                         "{} = fcmp {} double {}, {}",
                         temp, cmp_op, left_val.register, right_val.register
                     ));
-                    GeneratorResult::new(temp, "i1".to_string())
+                    GeneratorResult::new(temp, "i1".to_string(),"Boolean".to_string())
                 }
             }
 
@@ -348,7 +355,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
                     "{} = {} i1 {}, {}",
                     temp, opcode, left_val.register, right_val.register
                 ));
-                GeneratorResult::new(temp, "i1".to_string())
+                GeneratorResult::new(temp, "i1".to_string(),"Boolean".to_string())
             }
 
             OperatorToken::CONCAT => {
@@ -374,7 +381,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
                         result,result_ptr,right_val.register
                     )
                 );
-                GeneratorResult::new(result, "ptr".to_string())
+                GeneratorResult::new(result, "ptr".to_string(),"String".to_string())
             }
 
             _ => panic!("Unsupported binary operator: {:?}", op),
@@ -388,12 +395,12 @@ impl Visitor<GeneratorResult> for CodeGenerator {
             OperatorToken::NEG => {
                 let temp = self.context.new_temp("Number".to_string());
                 self.context.add_line(format!("{} = fsub double 0.0, {}", temp, operand_val.register));
-                GeneratorResult::new(temp, "double".to_string())
+                GeneratorResult::new(temp, "double".to_string(),"Number".to_string())
             }
             OperatorToken::NOT => {
                 let temp = self.context.new_temp("Boolean".to_string());
                 self.context.add_line(format!("{} = xor i1 {}, true", temp, operand_val.register));
-                GeneratorResult::new(temp, "i1".to_string())
+                GeneratorResult::new(temp, "i1".to_string(),"Boolean".to_string())
             }
             _ => panic!("Unsupported unary operator: {:?}", op),
         }
@@ -401,11 +408,11 @@ impl Visitor<GeneratorResult> for CodeGenerator {
 
     fn visit_if_else(&mut self, node: &mut IfElseNode) -> GeneratorResult {
         let node_type = node.node_type.clone().unwrap().type_name;
-        let node_type = to_llvm_type(node_type.clone());
+        let node_type_llvm = to_llvm_type(node_type.clone());
         let result_reg = self.context.new_temp(node_type.clone());
         let exit_id = self.context.new_id();
         let exit_label = format!("if_else_exit.{}", exit_id);
-        self.context.add_line(format!("{} = alloca {}", result_reg, node_type));
+        self.context.add_line(format!("{} = alloca {}", result_reg, node_type_llvm));
         let cond_reg = node.condition.accept(self);
         let if_id = self.context.new_id();
         let if_true_label = format!("if_true.{}", if_id);
@@ -418,7 +425,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         let if_expr = node.if_expression.accept(self);
         self.context.add_line(format!(
             "store {} {}, ptr {}\n",
-            node_type, if_expr.register, result_reg
+            node_type_llvm, if_expr.register, result_reg
         ));
         self.context.add_line(format!("br label %{}\n\n", exit_label));
         self.context.add_line(format!("{}:", if_false_label));
@@ -434,7 +441,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
                     self.context.add_line(format!(
                         "{} = add i1 0, 1", else_reg
                     ));
-                    GeneratorResult::new(else_reg, "i1".to_string())
+                    GeneratorResult::new(else_reg, "i1".to_string(),"Boolean".to_string())
                 };
                 if let Some(_) = cond {
                     self.context.add_line(format!(
@@ -448,7 +455,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
                 let elif_expr = expr.clone().accept(self);
                 self.context.add_line(format!(
                     "store {} {}, ptr {}\n",
-                    node_type, elif_expr.register, result_reg
+                    node_type_llvm, elif_expr.register, result_reg
                 ));
                 if let Some(_) = cond {
                     self.context.add_line(format!("br label %{}\n\n", exit_label));
@@ -467,9 +474,9 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         let final_result = self.context.new_temp(node_type.clone());
         self.context.add_line(format!(
             "{} = load {}, ptr {}\n",
-            final_result, node_type, result_reg
+            final_result, node_type_llvm, result_reg
         ));
-        GeneratorResult::new(final_result, node_type)
+        GeneratorResult::new(final_result, node_type_llvm,node_type)
     }
 
     fn visit_let_in(&mut self, node: &mut LetInNode) -> GeneratorResult {
@@ -477,8 +484,9 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         for assig in node.assignments.clone().iter_mut() {
             let identifier = assig.identifier.clone();
             let body = assig.expression.accept(self);
-            let llvm_type = body.llvm_type.clone();
+            let llvm_type = to_llvm_type(body.ast_type.clone());
             let register_name = format!("%{}.{}", identifier, self.context.get_scope());
+            self.context.temp_types.insert(register_name.clone(), assig.node_type.clone().unwrap().type_name.clone());
             self.context.add_variable(register_name.clone(), llvm_type.clone());
             self.context.add_line(format!(
                 "{} = alloca {}",
@@ -491,7 +499,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         }
         let body_result = node.body.accept(self);
         self.context.exit_scope();
-        GeneratorResult::new(body_result.register, body_result.llvm_type)
+        GeneratorResult::new(body_result.register, body_result.llvm_type, body_result.ast_type)
     }
 
     fn visit_destructive_assign(&mut self, node: &mut DestructiveAssignNode) -> GeneratorResult {
@@ -504,25 +512,113 @@ impl Visitor<GeneratorResult> for CodeGenerator {
                     expr_result.llvm_type, expr_result.register, identifier_register
                 ));
             }
-            _ => todo!() // Prop access 
+            Expression::TypePropAccess(obj) => {
+                let obj_type = self.context.current_self.clone().unwrap();
+                let prop_reg = self.context.new_temp(obj_type.clone());
+                let prop_index = self.context.type_members_ids.get(&(obj_type.clone(), (*obj.member).clone())).unwrap();
+                self.context.add_line(format!("{} = getelementptr %{}_type ,ptr %self.{}, i32 0 , i32 {}", prop_reg,obj_type.clone(),self.context.get_scope(),prop_index.clone()));
+                self.context.add_line(format!("store {} {}, ptr {}" , expr_result.llvm_type, expr_result.register, prop_reg));
+            }
+            _ => panic!("Error: assigment not possible")
         }
-        GeneratorResult::new(expr_result.register, expr_result.llvm_type)
+        GeneratorResult::new(expr_result.register, expr_result.llvm_type, expr_result.ast_type)
     }
 
-    fn visit_type_def(&mut self, _node: &mut TypeDefNode) -> GeneratorResult {
-        unimplemented!()
+    fn visit_type_def(&mut self, node: &mut TypeDefNode) -> GeneratorResult {
+        let type_name = node.identifier.clone();
+        let mut props_types = Vec::new();
+        for member in node.members.iter() {
+            match member {
+                TypeMember::Property(assignment) => {
+                    props_types.push(to_llvm_type(assignment.node_type.clone().unwrap().type_name))
+                }
+                _ => continue
+            }
+        }
+        let list_props_str = props_types
+            .iter()
+            .map(|llvm_name| format!("{}", llvm_name))
+            .collect::<Vec<_>>()
+            .join(", ");
+        self.context.add_line(format!("%{}_type = type {{ ptr, {} }}", type_name.clone(), list_props_str));
+        self.generate_type_table(node);
+        self.generate_type_constructor(node);
+        self.context.current_self = Some(node.identifier.clone());
+        for member in node.members.iter_mut() {
+            match  member {
+                TypeMember::Method(method) => {
+                    method.name = format!("{}_{}",type_name.clone(),method.name.clone());
+                    self.visit_function_def(method);
+                    
+                }
+                _ => continue
+            }
+        }
+        self.context.current_self = None;
+        GeneratorResult::new(format!("%{}_type",type_name.clone()), format!("%{}_type",type_name.clone()), type_name.clone())
+
     }
 
-    fn visit_type_instance(&mut self, _node: &mut TypeInstanceNode) -> GeneratorResult {
-        unimplemented!()
+    fn visit_type_instance(&mut self, node: &mut TypeInstanceNode) -> GeneratorResult { 
+        let type_constructor = format!("@{}_new", node.type_name);
+        let mut arg_regs = Vec::new();
+        for arg in node.arguments.iter_mut() { 
+            let arg_val = arg.accept(self);
+            arg_regs.push(format!("{} {}", arg_val.llvm_type, arg_val.register));
+        } 
+        let args_str = arg_regs.join(", ");
+        let result = self.context.new_temp(to_llvm_type(node.node_type.clone().unwrap().type_name));
+        self.context.add_line(format!(
+            "{} = call ptr {}({})",
+            result.clone(), type_constructor, args_str
+        ));
+        GeneratorResult::new(result.clone(), format!("%{}_type",node.type_name.clone()),node.type_name.clone())
     }
 
-    fn visit_type_function_access(&mut self, _node: &mut TypeFunctionAccessNode) -> GeneratorResult {
-        unimplemented!()
+    fn visit_type_function_access(&mut self, node: &mut TypeFunctionAccessNode) -> GeneratorResult {
+       let object = node.object.accept(self); 
+       let vtable_ptr_ptr_temp = self.context.new_temp("ptr".to_string());
+       self.context.add_line(format!("{} = getelementptr %{}_type, ptr {}, i32 0, i32 0",vtable_ptr_ptr_temp.clone(),object.ast_type.clone(),object.register.clone()));
+       let vtable_ptr_temp = self.context.new_temp("ptr".to_string());
+       self.context.add_line(format!("{} = load ptr, ptr {}",vtable_ptr_temp.clone(), vtable_ptr_ptr_temp.clone()));
+       
+       let function_index = *self.context.type_members_ids.get(&(object.ast_type.clone(), node.member.function_name.clone())).unwrap();
+       let func_ptr_ptr = self.context.new_temp("ptr".to_string());
+       self.context.add_line(format!("{} = getelementptr %{}_vtable, ptr {}, i32 0 , i32 {}", func_ptr_ptr, object.ast_type.clone(), vtable_ptr_temp, function_index));
+       let func_ptr = self.context.new_temp("ptr".to_string());
+       self.context.add_line(format!("{} = load ptr, ptr {}", func_ptr, func_ptr_ptr));
+       let return_type = node.node_type.clone().unwrap().type_name;
+       let return_llvm = to_llvm_type(return_type.clone());
+       let function_name = self.context.function_member_llvm_names.get(&(object.ast_type.clone(),node.member.function_name.clone())).unwrap().clone();
+        let mut llvm_args: Vec<String> = Vec::new();
+        for arg in node.member.arguments.iter_mut() {
+            let arg_val = arg.accept(self);
+            let arg_reg = self.context.new_temp(arg_val.llvm_type.clone());
+            self.context.add_line(format!("{} = alloca {}", arg_reg.clone(), arg_val.llvm_type));
+            self.context.add_line(format!(
+                "store {} {}, ptr {}",
+                arg_val.llvm_type, arg_val.register, arg_reg.clone()
+            ));
+            llvm_args.push(format!("ptr {}", arg_reg));
+        }
+        llvm_args.insert(0, format!("ptr {}", object.register));
+        let temp = self.context.new_temp(return_type.clone());
+        self.context.add_line(format!(
+            "{} = call {} {}({})",
+            temp.clone(), return_llvm, function_name, llvm_args.join(", ")
+        ));
+        GeneratorResult::new(temp, to_llvm_type(node.member.node_type.clone().unwrap().type_name), node.member.node_type.clone().unwrap().type_name)
     }
 
-    fn visit_type_prop_access(&mut self, _node: &mut TypePropAccessNode) -> GeneratorResult {
-        unimplemented!()
+    fn visit_type_prop_access(&mut self, node: &mut TypePropAccessNode) -> GeneratorResult {
+        let object = node.object.accept(self);
+        let member_index = self.context.type_members_ids.get(&(object.ast_type.clone(), (*node.member).clone())).unwrap().clone();
+        let node_type = to_llvm_type(node.node_type.clone().unwrap().type_name);
+        let ptr_temp = self.context.new_temp(to_llvm_type(node_type.clone()));
+        self.context.add_line(format!("{} = getelementptr %{}_type, ptr %self.{}, i32 0 , i32 {}", ptr_temp, object.ast_type.clone(), self.context.get_scope(), member_index));
+        let result = self.context.new_temp(node_type.clone());
+        self.context.add_line(format!("{} = load {}, ptr {}", result.clone(), node_type.clone(), ptr_temp.clone()));
+        GeneratorResult::new(result, node_type.clone(), node.node_type.clone().unwrap().type_name)
     }
     
     fn visit_print(&mut self, node: &mut PrintNode) -> GeneratorResult {
@@ -550,7 +646,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         } else {
             panic!("Unsupported expression type for print: {:?}", node.expression);
         }
-        GeneratorResult::new(arg.register, arg.llvm_type)
+        GeneratorResult::new(arg.register, arg.llvm_type, node.node_type.clone().unwrap().type_name)
     }
 
 }

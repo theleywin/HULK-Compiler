@@ -32,6 +32,9 @@ impl CodeGenerator {
         if !module_code.last().map(|s| s.is_empty()).unwrap_or(false) {
             module_code.push("".into());
         }
+
+        self.init_all_type_methods_and_props(program);
+
         module_code.extend(self.get_definitions(program));
         let main_code = &self.get_main_code(program);
         generate_main_wrapper(&mut module_code, &main_code , self.context.str_constants.clone());

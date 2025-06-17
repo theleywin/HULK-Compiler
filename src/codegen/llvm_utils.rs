@@ -70,6 +70,6 @@ pub fn to_llvm_type(type_node: String) -> String {
         "Number" => "double".to_string(),
         "Boolean" => "i1".to_string(),
         "String" => "ptr".to_string(),
-        _ => "i8*".to_string(), // Default to pointer type for unknown types
+        _ => format!("%{}_type*", type_node), // Default to pointer type for unknown types
     }
 }
