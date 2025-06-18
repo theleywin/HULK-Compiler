@@ -6,6 +6,7 @@ use super::expression::Expression;
 pub struct Assignment { //TODO Add optional Signature Assignment
     pub identifier: String,
     pub expression: Box<Expression>,
+    pub node_type: Option<TypeNode>,
 }
 
 impl Assignment {
@@ -13,7 +14,11 @@ impl Assignment {
         Assignment {
             identifier,
             expression: Box::new(expression),
+            node_type: None,
         }
+    }
+    pub fn set_type(&mut self, node_type: TypeNode) {
+        self.node_type = Some(node_type);
     }
 }
 

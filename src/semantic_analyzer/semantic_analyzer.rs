@@ -65,8 +65,8 @@ impl SemanticAnalyzer {
     }
 
     pub fn analyze(&mut self, node: &mut Program) -> Result<(), Vec<SemanticError>> {
-        self.get_functions_names_and_signatures(node);
         self.get_types_definitions(node);
+        self.get_functions_names_and_signatures(node);
         self.build_types();
         for statement in &mut node.statements {
             statement.accept(self);
@@ -526,6 +526,7 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         self.enter_scope();
         for assig in node.assignments.iter_mut() {
             let expr_type = assig.expression.accept(self);
+            assig.set_type(expr_type.clone());
             self.context.symbols.insert(assig.identifier.clone(), expr_type.type_name);
         }
         let return_type = node.body.accept(self);
@@ -550,13 +551,13 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         }
         if let Some(parent_name) = &node.parent {
             if let Some(parent_node) = self.types_tree.get_type(&parent_name) {    
-                if parent_node.params.len() != node.parent_args.len() && !node.parent_args.is_empty() {
+                if parent_node.params.len() != node.parent_args.len() {
                     self.new_error(SemanticError::InvalidTypeArgumentCount(node.parent_args.len(), parent_node.params.len(), parent_node.type_name.clone()));
                 } else {
                     for (index , arg) in node.parent_args.iter_mut().enumerate() {
                         let arg_type = arg.accept(self);
                         if arg_type.type_name != parent_node.params[index].signature {
-                            self.new_error(SemanticError::InvalidTypeArgument("types".to_string() ,arg_type.type_name, parent_node.params[index].name.clone(), index, node.identifier.clone()));
+                            self.new_error(SemanticError::InvalidTypeArgument("types".to_string() ,arg_type.type_name, parent_node.params[index].signature.clone(), index, node.identifier.clone()));
                         }
                     }
                 }
@@ -568,6 +569,7 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
             match member {
                 TypeMember::Property(prop) => {
                     let prop_type = prop.expression.accept(self);
+                    prop.set_type(prop_type.clone());
                     if let Some(type_node) = self.types_tree.nodes.get_mut(&node.identifier){
                         type_node.add_variable(prop.identifier.clone(), Box::new(prop_type.type_name));
                     }
@@ -627,6 +629,7 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                 }
                 if let Some(function_return_type) = self.types_tree.get_type(&func.return_type) {
                     node.set_type(function_return_type.clone());
+                    node.member.set_type(function_return_type.clone());
                     function_return_type
                 } else {
                     self.new_error(SemanticError::UndefinedType(func.return_type.clone()));

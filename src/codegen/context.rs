@@ -22,6 +22,20 @@ pub struct CodeGenContext {
     pub runtime_functions: HashSet<String>,
     pub variables: HashMap<String, String>,
     pub scopes: Vec<HashMap<String, String>>,
+    pub function_member_llvm_names: HashMap<(String, String), String>,
+    // (type) -> type_parent
+    pub inherits: HashMap<String, String>,
+    // (type) -> type_constructor_args
+    pub constructor_args_types: HashMap<String, Vec<String>>,
+    // (type, function_name, function_index) -> function_arguments
+    pub types_members_functions: HashMap<(String,String,i32), Vec<String>>,
+    // (type, member) -> member_type
+    pub type_members_types: HashMap<(String, String), String>,
+    // (type, member) -> member_index_on_type_struct
+    pub type_members_ids: HashMap<(String, String), i32>,
+    // (type, member) -> function_index_on_v_table
+    pub type_functions_ids: HashMap<(String,String),i32>,
+    pub current_self: Option<String>,
 }
 
 #[derive(Clone)]
@@ -47,6 +61,15 @@ impl Default for CodeGenContext {
             runtime_functions: HashSet::new(),
             variables: HashMap::new(),
             scopes: Vec::new(),
+            function_member_llvm_names: HashMap::new(),
+            inherits: HashMap::new(),
+            constructor_args_types: HashMap::new(),
+            types_members_functions: HashMap::new(),
+            type_members_types: HashMap::new(),
+            type_members_ids: HashMap::new(),
+            type_functions_ids: HashMap::new(),
+            current_self: None
+
         }
     }
 }
@@ -90,15 +113,15 @@ impl CodeGenContext {
         std::mem::take(&mut self.code)
     }
 
-    pub fn get_type(&self, temp: &str) -> String {
+    pub fn get_type(&mut self, temp: &str) -> String {
         self.temp_types.get(temp).expect("Unknown temporary").clone()
     }
 
-    pub fn is_bool(&self, name: &str) -> bool {
+    pub fn is_bool(&mut self, name: &str) -> bool {
         self.get_type(name) == "Boolean"
     }
 
-    pub fn is_string(&self, name: &str) -> bool {
+    pub fn is_string(&mut self, name: &str) -> bool {
         self.get_type(name) == "String"
     }
 
@@ -108,7 +131,6 @@ impl CodeGenContext {
     }
 
     pub fn exit_scope(&mut self) {
-        self.scope_id -= 1;
         self.variables = self.scopes.pop().unwrap_or_default();
     }
 
