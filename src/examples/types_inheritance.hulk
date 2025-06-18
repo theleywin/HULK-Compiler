@@ -1,0 +1,27 @@
+print("Ejemplo de Herencia con types Animal -> Mamifero -> Perro");
+
+type Perro(raza: String , age: Number) inherits Mamifero(true , age) {
+     raza = raza;
+
+     getRaza() : String => self.raza;
+};
+
+type Mamifero (tienePelo :Boolean , age: Number) inherits Animal(age) {
+     tienePelo = tienePelo;
+
+     getPelo() : Boolean => self.tienePelo;
+} ;
+
+type Animal (age: Number) {
+     age = age;
+
+     getAge(): Number => self.age ;
+     setAge(age:Number): Number => self.age := age;
+};
+
+
+let champion = new Perro("pastor", 5) in {
+     print(champion.getAge());
+     champion.setAge(6);
+     print(champion.getAge());
+}; 

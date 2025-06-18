@@ -1,14 +1,24 @@
+//! Custom parser wrapper that integrates LALRPOP-generated parser and enhances syntax error messages.
+
 use crate::ast_nodes::program::Program;
 use crate::parser::ProgramParser;
 use lalrpop_util::ParseError;
 use std::collections::HashSet;
 
+/// Wrapper around the LALRPOP `ProgramParser` that handles syntax errors
+/// and improves their reporting with line/column context and caret diagnostics.
 pub struct Parser {
     core: ProgramParser,
+    /// Line offset due to code injected before the user program.
     pub missplacement: i32,
 }
 
 impl Parser {
+    /// Constructs a new `Parser` with the given line misplacement.
+    ///
+    /// # Arguments
+    /// * `missplacement` - The number of lines added before the user's code,
+    ///                     used to adjust error line numbers accordingly.
     pub fn new(missplacement: i32) -> Self {
         Parser {
             core: ProgramParser::new(),
@@ -16,6 +26,15 @@ impl Parser {
         }
     }
 
+    /// Retrieves line context and position info for a byte offset.
+    ///
+    /// # Arguments
+    /// * `input` - The full source input as a string.
+    /// * `offset` - The byte offset where the error occurred.
+    /// * `missplacement` - Lines to subtract from the reported line number.
+    ///
+    /// # Returns
+    /// Tuple `(line, column, line_content, line_start_offset)`
     fn get_line_context(
         input: &str,
         offset: usize,
@@ -45,7 +64,6 @@ impl Parser {
         };
 
         let line_str = input[line_start..line_end].to_string();
-
         let byte_offset_in_line = offset - line_start;
         let substring = if byte_offset_in_line <= line_str.len() {
             &line_str[..byte_offset_in_line]
@@ -54,16 +72,17 @@ impl Parser {
         };
         let char_offset = substring.chars().count();
         let column = char_offset + 1;
-
         let adjusted_line = (line_number as i32 - missplacement).max(1) as usize;
 
         (adjusted_line, column, line_str, line_start)
     }
 
+    /// Builds a simple caret (`^`) pointer for a given column.
     fn build_caret_point(col: usize) -> String {
         " ".repeat(col - 1) + "^"
     }
 
+    /// Builds an underline of `^` under the offending token.
     fn build_caret_token(line_str: &str, col: usize, token_str: &str) -> String {
         let token_char_count = token_str.chars().count();
         let remaining_chars_in_line = line_str.chars().skip(col - 1).count();
@@ -73,6 +92,7 @@ impl Parser {
         spaces + &underlines
     }
 
+    /// Converts LALRPOP token names into more human-readable forms.
     fn token_to_human_readable(token: &str) -> String {
         token
             .replace('"', "")
@@ -81,6 +101,14 @@ impl Parser {
             .replace('#', "")
     }
 
+    /// Parses the input source code and returns an AST or formatted syntax errors.
+    ///
+    /// # Arguments
+    /// * `input` - The source code as a string.
+    ///
+    /// # Returns
+    /// * `Ok(Program)` if parsing succeeds.
+    /// * `Err(Vec<String>)` with diagnostic error messages if parsing fails.
     pub fn parse(&self, input: &str) -> Result<Program, Vec<String>> {
         let mut errors = Vec::new();
         let result = self.core.parse(input);

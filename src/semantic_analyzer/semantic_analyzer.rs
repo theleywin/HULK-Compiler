@@ -27,14 +27,22 @@ use crate::visitor::visitor_trait::Visitor;
 use crate::tokens::Span;
 use std::collections::HashMap;
 
+/// SemanticAnalyzer performs semantic analysis of the AST,
+/// validating types, functions, variables, and type hierarchy.
+/// It maintains semantic context, scope stack, errors, and the type tree.
 pub struct SemanticAnalyzer {
+    /// Current context containing declared symbols, functions, and types.
     context: SemanticContext,
+    /// Stack of contexts to handle nested scopes.
     scopes: Vec<SemanticContext>,
+    /// List of semantic errors found during analysis.
     errors: Vec<SemanticError>,
+    /// Tree representing the hierarchy and relations of types.
     types_tree: TypeTree,
 }
 
 impl SemanticAnalyzer {
+ /// Creates a new SemanticAnalyzer with predefined basic types and constants (PI, E).
     pub fn new() -> Self {
         let mut s_a = Self {
             context: SemanticContext {
@@ -56,19 +64,22 @@ impl SemanticAnalyzer {
             .insert("E".to_string(), "Number".to_string());
         s_a
     }
-
+     /// Enters a new scope by pushing the current context onto the stack.
     fn enter_scope(&mut self) {
         self.scopes.push(self.context.clone());
     }
-
+    /// Exits the current scope, restoring the previous context from the stack.
     fn exit_scope(&mut self) {
         self.context = self.scopes.pop().unwrap();
     }
-
+    /// Adds a new semantic error to the list of errors.
     fn new_error(&mut self, error: SemanticError) {
         self.errors.push(error);
     }
-
+    /// Analyzes a complete program by collecting type and function definitions,
+    /// building the type tree, and analyzing each statement.
+    ///
+    /// Returns Ok(()) if no errors found, or Err with the list of semantic errors.
     pub fn analyze(&mut self, node: &mut Program) -> Result<(), Vec<SemanticError>> {
         self.get_types_definitions(node);
         self.get_functions_names_and_signatures(node);
@@ -83,10 +94,13 @@ impl SemanticAnalyzer {
         }
     }
 
+    /// Retrieves a built-in type node based on the BuiltInTypes enum.
     pub fn get_built_in_types(&self, built_in: &BuiltInTypes) -> TypeNode {
         self.types_tree.get_type(built_in.as_str()).unwrap()
     }
-
+    
+    /// Collects function names and signatures declared in the program,
+    /// validating parameter types and reporting redefinitions or undefined types.
     pub fn get_functions_names_and_signatures(&mut self, node: &mut Program) {
         for statement in &node.statements {
             match statement {
@@ -150,6 +164,8 @@ impl SemanticAnalyzer {
         }
     }
 
+    /// Collects type definitions in the program,
+    /// ensuring no redefinitions or direct inheritance cycles.
     pub fn get_types_definitions(&mut self, node: &mut Program) {
         for statement in &node.statements {
             match statement {
@@ -185,6 +201,9 @@ impl SemanticAnalyzer {
         }
     }
 
+    /// Builds the type tree from collected definitions,
+    /// assigning methods, variables, parents, and children,
+    /// and checking for inheritance cycles and related errors.
     pub fn build_types(&mut self) {
         for (type_name, type_def) in self.context.declared_types.clone() {
             let mut methods = HashMap::new();
@@ -276,6 +295,8 @@ impl SemanticAnalyzer {
 }
 
 impl Visitor<TypeNode> for SemanticAnalyzer {
+    /// Visits a `for` loop node, checking types of loop variables and range expressions,
+    /// and analyzes the loop body within a new scope.
     fn visit_for_loop(&mut self, node: &mut ForNode) -> TypeNode {
         self.enter_scope();
         self.context
@@ -309,6 +330,8 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         return_type
     }
 
+    /// Visits a destructive assignment node, validating that assignment
+    /// targets are identifiers or type property accesses and updating context accordingly.
     fn visit_destructive_assign(&mut self, node: &mut DestructiveAssignNode) -> TypeNode {
         match *node.identifier.clone() {
             Expression::Identifier(ref id) => {
@@ -355,6 +378,10 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         }
     }
 
+    /// Visits a function definition node, entering a new scope and
+    /// populating symbols with function parameters. Checks for
+    /// undeclared functions and verifies the return type compatibility.
+    /// Returns the function's return type node.
     fn visit_function_def(&mut self, node: &mut FunctionDefNode) -> TypeNode {
         self.enter_scope();
         self.context.current_function = Some(node.name.clone());
@@ -413,21 +440,27 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         return_type_node
     }
 
+    /// Visits a numeric literal node, setting and returning the built-in Number type.
     fn visit_literal_number(&mut self, node: &mut NumberLiteralNode) -> TypeNode {
         node.set_type(self.get_built_in_types(&BuiltInTypes::Number));
         self.get_built_in_types(&BuiltInTypes::Number)
     }
 
+    /// Visits a boolean literal node, setting and returning the built-in Boolean type.
     fn visit_literal_boolean(&mut self, node: &mut BooleanLiteralNode) -> TypeNode {
         node.set_type(self.get_built_in_types(&BuiltInTypes::Boolean));
         self.get_built_in_types(&BuiltInTypes::Boolean)
     }
 
+    /// Visits a string literal node, setting and returning the built-in String type.
     fn visit_literal_string(&mut self, node: &mut StringLiteralNode) -> TypeNode {
         node.set_type(self.get_built_in_types(&BuiltInTypes::String));
         self.get_built_in_types(&BuiltInTypes::String)
     }
 
+    /// Visits an identifier node, resolving its type from symbols or current type context.
+    /// Reports errors if the identifier or its type is undefined.
+    /// Returns the resolved type node or Unknown type if unresolved.
     fn visit_identifier(&mut self, node: &mut IdentifierNode) -> TypeNode {
         if let Some(return_type) = self.context.symbols.get(&node.value) {
             if let Some(node_type) = self.types_tree.get_type(&return_type) {
@@ -468,6 +501,10 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         }
     }
 
+    /// Visits a function call node, checking argument types against declared function signatures.
+    /// Supports special handling for `base` calls in type hierarchies.
+    /// Reports errors for undeclared functions, invalid argument count, or mismatched types.
+    /// Returns the function's return type node.
     fn visit_function_call(&mut self, node: &mut FunctionCallNode) -> TypeNode {
         let mut arg_types: Vec<TypeNode> = Vec::new();
         for arg in node.arguments.iter_mut() {
@@ -565,6 +602,8 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         }
     }
 
+    /// Visits a while loop node, checking that the condition type is Boolean,
+    /// and returns the type of the loop body.
     fn visit_while_loop(&mut self, node: &mut WhileNode) -> TypeNode {
         let condition_type = node.condition.accept(self);
         if condition_type != self.get_built_in_types(&BuiltInTypes::Boolean) {
@@ -578,6 +617,8 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         return body_type;
     }
 
+     /// Visits a code block node, entering a new scope for the block,
+    /// visiting each expression in sequence and returning the type of the last expression.
     fn visit_code_block(&mut self, node: &mut BlockNode) -> TypeNode {
         self.enter_scope();
         let mut last_type = self.get_built_in_types(&BuiltInTypes::Unknown);
@@ -589,6 +630,8 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         last_type
     }
 
+    /// Visits a binary operation node, checking operand types and operator validity,
+    /// setting and returning the resulting type or reporting errors.
     fn visit_binary_op(&mut self, node: &mut BinaryOpNode) -> TypeNode {
         let left_type = node.left.accept(self);
         let right_type = node.right.accept(self);
@@ -697,6 +740,8 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         }
     }
 
+     /// Visits a unary operation node, validating operand type against the operator,
+    /// returning the resulting type or Unknown on error.
     fn visit_unary_op(&mut self, node: &mut UnaryOpNode) -> TypeNode {
         let operand_type = node.operand.accept(self);
 
@@ -740,6 +785,8 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         }
     }
 
+     /// Visits an if-else node, ensuring conditions are Boolean,
+    /// and checks type consistency across branches. Returns the type of the if-expression.
     fn visit_if_else(&mut self, node: &mut IfElseNode) -> TypeNode {
         let if_condition_type = node.condition.accept(self);
         if if_condition_type != self.get_built_in_types(&BuiltInTypes::Boolean) {
@@ -772,6 +819,8 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         result
     }
 
+    /// Visits a let-in node, entering a new scope, visiting assignments,
+    /// registering variable types, and returning the type of the body expression.
     fn visit_let_in(&mut self, node: &mut LetInNode) -> TypeNode {
         self.enter_scope();
         for assig in node.assignments.iter_mut() {
@@ -787,6 +836,9 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         return_type
     }
 
+     /// Visits a type definition node, entering a new scope and setting current type context.
+    /// Validates parameter names and types, verifies parent type and arguments,
+    /// visits members (properties and methods), and returns the type node of the defined type.
     fn visit_type_def(&mut self, node: &mut TypeDefNode) -> TypeNode {
         self.enter_scope();
         self.context.current_type = Some(node.identifier.clone());
@@ -877,6 +929,8 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         return_type
     }
 
+     /// Visits a type instance node, checking the number and types of type arguments.
+    /// Returns the corresponding type node or Unknown if invalid.
     fn visit_type_instance(&mut self, node: &mut TypeInstanceNode) -> TypeNode {
         if let Some(type_node) = self.types_tree.get_type(&node.type_name) {
             if type_node.params.len() != node.arguments.len() {
@@ -913,6 +967,9 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         }
     }
 
+    /// Visits a type function access node, resolving the method in the object's type,
+    /// verifying argument count and types, and returning the function's return type node.
+    /// Reports errors if method is not found or arguments mismatch.
     fn visit_type_function_access(&mut self, node: &mut TypeFunctionAccessNode) -> TypeNode {
         let object = node.object.accept(self);
         let member_function = self
@@ -963,6 +1020,8 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         }
     }
 
+     /// Visits a type property access node, resolving the property type in the current type context,
+    /// and returning the property type node or Unknown if invalid.
     fn visit_type_prop_access(&mut self, node: &mut TypePropAccessNode) -> TypeNode {
         let object = node.object.accept(self);
         if let Some(current_type) = self.context.current_type.clone() {
@@ -997,6 +1056,8 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         }
     }
 
+    /// Visits a print statement node, ensuring the expression is a valid printable type
+    /// (Number, String, or Boolean), and returns the expression's type.
     fn visit_print(&mut self, node: &mut PrintNode) -> TypeNode {
         let expr_type = node.expression.accept(self);
         if expr_type.type_name != "Number"
