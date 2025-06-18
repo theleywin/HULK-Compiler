@@ -666,13 +666,9 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         if arg.llvm_type == "i1" {
             self.context.add_line(format!("%bool_ptr{} = select i1 {}, ptr @.true_str, ptr @.false_str", id ,arg.register));
             self.context.add_line(format!("{} = call i32 (ptr, ...) @printf(ptr %bool_ptr{})", call_reg,id));
-            self.context.add_line(new_line);
-            self.context.add_line(new_line2);
         } else if arg.llvm_type == "double" {
             self.context.add_line(format!("%fmt_dbl_ptr{} = getelementptr [4 x i8], ptr @.str.f, i32 0, i32 0", id)); 
             self.context.add_line(format!("{} = call i32 (ptr, ...) @printf(ptr %fmt_dbl_ptr{}, double {})", call_reg, id, arg.register));
-            self.context.add_line(new_line);
-            self.context.add_line(new_line2);
         } else if arg.llvm_type == "ptr" {
             self.context.add_line(format!("{} = call i32 (ptr, ...) @printf(ptr {})", call_reg, arg.register));
             self.context.add_line(new_line);

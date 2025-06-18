@@ -1,21 +1,4 @@
 use crate::{ast_nodes::{program::{Program, Statement}, type_def::{TypeDefNode, TypeMember}}, codegen::{llvm_utils::to_llvm_type, CodeGenerator}, visitor::accept::Accept}; // Bring the trait into scope
-// (type, function_name) -> llvm_function_name
-// pub function_member_llvm_names: HashMap<(String, String), String>,
-
-// (type) -> type_parent
-// pub inherits: HashMap<String, String>,
-
-// (type) -> type_constructor_args
-// pub constructor_args_types: HashMap<String, Vec<String>>,
-
-// (type, function_name, function_index) -> function_arguments_types
-// pub types_members_functions: HashMap<(String,String,i32), Vec<String>>,
-
-// (type, member) -> member_type
-// pub type_members_types: HashMap<(String, String), String>,
-
-// (type, member) -> member_index_on_type_struct
-// pub type_members_ids: HashMap<(String, String), i32>,
 
 impl CodeGenerator {
     pub fn init_all_type_methods_and_props(&mut self, node: &mut Program) {
@@ -75,17 +58,7 @@ impl CodeGenerator {
                 _ => continue 
             }
         }
-        //vtable only contains original methods 
-        // if let Some(parent) = node.parent.clone() {
-        //     for (ty, func_name) in self.context.function_member_llvm_names.keys().filter(|(ty, _)| ty == &parent) {
-        //         let method_llvm = self.context.function_member_llvm_names.get(&(ty.clone(), func_name.clone())).unwrap();
-        //         if !methods_list.contains(&method_llvm) {
-        //             methods_list.push(method_llvm.clone());
-        //             self.context.type_members_ids.insert((type_name.clone(), func_name.clone()), methods_index);
-        //             methods_index += 1;
-        //         }
-        //     }
-        // }
+    
         let table = format!("%{}_vtable", type_name);
         let ptr_types = std::iter::repeat("ptr").take(methods_index as usize).collect::<Vec<_>>().join(", ");
         self.context.add_line(format!("{} = type {{ {} }}" , table, ptr_types)); 
@@ -115,16 +88,6 @@ impl CodeGenerator {
                 _ => continue 
             }
         }
-
-        // vtable only contais original methods
-        // if let Some(parent) = node.parent.clone() {
-        //     for (ty, func_name) in self.context.function_member_llvm_names.keys().filter(|(ty, _)| ty == &parent) {
-        //         let method_llvm = self.context.function_member_llvm_names.get(&(ty.clone(), func_name.clone())).unwrap();
-        //         if !methods_list.contains(&method_llvm) {
-        //             methods_list.push(method_llvm.clone());
-        //         }
-        //     }
-        // }
 
         let table = format!("%{}_vtable", type_name);
         
@@ -189,18 +152,6 @@ impl CodeGenerator {
             }
         }
 
-        // for param in node.params.iter() {
-        //     let prop_reg = self.context.new_temp(param.signature.clone());
-
-        //     let member_key = (type_name.clone(), param.name.clone());
-        //     let member_index = self.context.type_members_ids.get(&member_key)
-        //         .expect("Member index not found for type and param name");
-        //     self.context.add_line(format!(
-        //         "{} = getelementptr {}, ptr {}, i32 0, i32 {}",
-        //         prop_reg, type_reg, mem_temp, member_index
-        //     ));
-        //     self.context.add_line(format!("store {} %registroconresult, ptr {}" ,to_llvm_type(param.signature.clone()), prop_reg)); //Todo
-        // }
         self.context.add_line(format!("ret ptr {}", mem_temp));
         self.context.add_line("}".to_string());
 
