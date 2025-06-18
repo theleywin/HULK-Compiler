@@ -1,6 +1,18 @@
 use std::fmt;
 
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Span {
+    pub start: usize,
+    pub end: usize,
+}
+
+impl Span {
+    pub fn new(start: usize, end: usize) -> Self {
+        Span { start, end }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum KeywordToken {
     PRINT,
     WHILE,
@@ -15,7 +27,7 @@ pub enum KeywordToken {
     FUNCTION,
     INHERITS,
     TYPE,
-    NEW
+    NEW,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -66,15 +78,14 @@ impl fmt::Display for OperatorToken {
             OperatorToken::OR => "|",
             OperatorToken::DOT => ".",
         };
-        write!(f, "{}", s)  
+        write!(f, "{}", s)
     }
 }
 
-
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum DelimiterToken {
     SEMICOLON,
-    COLON,  
+    COLON,
     COMMA,
     LPAREN,
     RPAREN,
