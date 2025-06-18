@@ -1,34 +1,28 @@
-type Point ( x: Number, y: Number ) {
-     y = y;
-     x = x + 5;
-
-     getX() : Number => self.x ;
-     getY() : Number => self.y ;
-
-     setX(x: Number) : Number => self.x := x ;
-
-     Sum(a: Number, b: Number) : Number => a + b ;
-};
-
-let a = new Point( 5 , 64) in {
-     print(a.getX());
-     a.setX(7);
-     print(a.getX());
-     print(a.getY());
-     print(a.Sum(5 , 40));
-} ;
-
-
-type Person (name: String, age: Number) {
-     name = name;
+print("Ejemplo de Herencia con types Animal -> Mamifero -> Perro");
+type Animal (age: Number) {
      age = age;
 
-     getName() : String => self.name;
-     getAge() : Number => self.age;
-
-     presentation() : String => "Hi! " @ "I'm " @ self.name ;
+     getAge(): Number => self.age ;
+     setAge(age:Number): Number => self.age := age;
 };
 
-let pavlo = new Person("paflo", 22) in {
-     print(pavlo.presentation());
+type Mamifero (tienePelo :Boolean , age: Number) inherits Animal(age) {
+     tienePelo = tienePelo;
+
+     getPelo() : Boolean => self.tienePelo;
+} ;
+
+type Perro(raza: String , age: Number) inherits Mamifero(true , age) {
+     raza = raza;
+
+     getRaza() : String => self.raza;
 };
+
+
+let champion = new Perro("pastor", 5) in {
+     print(champion.getAge());
+     print(champion.setAge(6));
+     print(champion.getAge());
+}; 
+
+print(sqrt(25));
