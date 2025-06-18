@@ -1,9 +1,9 @@
 print("Ejemplo de Herencia con types Animal -> Mamifero -> Perro");
-type Animal (age: Number) {
-     age = age;
 
-     getAge(): Number => self.age ;
-     setAge(age:Number): Number => self.age := age;
+type Perro(raza: String , age: Number) inherits Mamifero(true , age) {
+     raza = raza;
+
+     getRaza() : String => self.raza;
 };
 
 type Mamifero (tienePelo :Boolean , age: Number) inherits Animal(age) {
@@ -12,10 +12,11 @@ type Mamifero (tienePelo :Boolean , age: Number) inherits Animal(age) {
      getPelo() : Boolean => self.tienePelo;
 } ;
 
-type Perro(raza: String , age: Number) inherits Mamifero(true , age) {
-     raza = raza;
+type Animal (age: Number) {
+     age = age;
 
-     getRaza() : String => self.raza;
+     getAge(): Number => self.age ;
+     setAge(age:Number): Number => self.age := age;
 };
 
 
@@ -25,4 +26,5 @@ let champion = new Perro("pastor", 5) in {
      print(champion.getAge());
 }; 
 
-print(sqrt(25));
+print("Raiz cuadrada de 169");
+print(sqrt(169));
