@@ -22,7 +22,6 @@ pub struct CodeGenContext {
     pub runtime_functions: HashSet<String>,
     pub variables: HashMap<String, String>,
     pub scopes: Vec<HashMap<String, String>>,
-    // (type, function_name) -> llvm_function_name
     pub function_member_llvm_names: HashMap<(String, String), String>,
     // (type) -> type_parent
     pub inherits: HashMap<String, String>,
@@ -34,6 +33,8 @@ pub struct CodeGenContext {
     pub type_members_types: HashMap<(String, String), String>,
     // (type, member) -> member_index_on_type_struct
     pub type_members_ids: HashMap<(String, String), i32>,
+    // (type, member) -> function_index_on_v_table
+    pub type_functions_ids: HashMap<(String,String),i32>,
     pub current_self: Option<String>,
 }
 
@@ -66,6 +67,7 @@ impl Default for CodeGenContext {
             types_members_functions: HashMap::new(),
             type_members_types: HashMap::new(),
             type_members_ids: HashMap::new(),
+            type_functions_ids: HashMap::new(),
             current_self: None
 
         }
