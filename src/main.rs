@@ -53,7 +53,7 @@ fn main() {
                 Err(errors) => {
                     println!("\x1b[31mSemantic Errors:");
                     for err in errors.iter() {
-                        println!("{}", err.message());
+                        println!("{}", err.report(&input, missplacement));
                     }
                     println!("\x1b[0m");
                     std::process::exit(3);

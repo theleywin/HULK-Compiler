@@ -2,7 +2,7 @@ use crate::types_tree::tree_node::TypeNode;
 
 use super::expression::Expression;
 
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ExpressionList {
     pub expressions: Box<Vec<Expression>>,
 }
@@ -15,7 +15,7 @@ impl ExpressionList {
     }
 }
 
-#[derive(Debug, PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct BlockNode {
     pub expression_list: Box<ExpressionList>,
     pub node_type: Option<TypeNode>,
@@ -32,4 +32,3 @@ impl BlockNode {
         self.node_type = Some(node_type);
     }
 }
-
