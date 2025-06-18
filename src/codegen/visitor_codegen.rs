@@ -23,7 +23,7 @@ use crate::visitor::accept::Accept;
 use crate::visitor::visitor_trait::Visitor;
 
 pub struct GeneratorResult {
-    pub register: String,
+    pub register: String,   
     pub llvm_type: String,
     pub ast_type : String,
 }
@@ -102,8 +102,8 @@ impl Visitor<GeneratorResult> for CodeGenerator {
             let register = self.context.new_temp(llvm_type.clone());
             self.context.add_line(format!(
                  "{} = load {}, ptr {}", register, llvm_type.clone(), self.context.get_variable(value)
-             ));
-             GeneratorResult::new(register, llvm_type.clone(),node.node_type.clone().unwrap().type_name)
+            ));
+            GeneratorResult::new(register, llvm_type.clone(),node.node_type.clone().unwrap().type_name)
         }
     }
 
@@ -539,7 +539,12 @@ impl Visitor<GeneratorResult> for CodeGenerator {
             .map(|llvm_name| format!("{}", llvm_name))
             .collect::<Vec<_>>()
             .join(", ");
-        self.context.add_line(format!("%{}_type = type {{ ptr, {} }}", type_name.clone(), list_props_str));
+        // type (vtable , parent , props...)
+        if props_types.len() > 0 {
+            self.context.add_line(format!("%{}_type = type {{ ptr, ptr, {} }}", type_name.clone(), list_props_str)); 
+        } else {
+            self.context.add_line(format!("%{}_type = type {{ ptr, ptr }}", type_name.clone())); 
+        }
         self.generate_type_table(node);
         self.generate_type_constructor(node);
         self.context.current_self = Some(node.identifier.clone());
@@ -560,7 +565,6 @@ impl Visitor<GeneratorResult> for CodeGenerator {
 
     fn visit_type_instance(&mut self, node: &mut TypeInstanceNode) -> GeneratorResult { 
         let type_constructor = format!("@{}_new", node.type_name);
-        //new
         let llvm_args: Vec<String> = node.arguments.iter().map(|arg| {
             let arg_val = arg.clone().accept(self);
             let arg_reg = self.context.new_temp(arg_val.llvm_type.clone());
@@ -572,7 +576,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
             format!("ptr {}", arg_reg)
         }).collect();
         let args_str = llvm_args.join(", ");
-        let result = self.context.new_temp(to_llvm_type(node.node_type.clone().unwrap().type_name));
+        let result = self.context.new_temp(node.node_type.clone().unwrap().type_name);
         self.context.add_line(format!(
             "{} = call ptr {}({})",
             result.clone(), type_constructor, args_str
@@ -581,20 +585,45 @@ impl Visitor<GeneratorResult> for CodeGenerator {
     }
 
     fn visit_type_function_access(&mut self, node: &mut TypeFunctionAccessNode) -> GeneratorResult {
-       let object = node.object.accept(self); 
-       let vtable_ptr_ptr_temp = self.context.new_temp("ptr".to_string());
-       self.context.add_line(format!("{} = getelementptr %{}_type, ptr {}, i32 0, i32 0",vtable_ptr_ptr_temp.clone(),object.ast_type.clone(),object.register.clone()));
-       let vtable_ptr_temp = self.context.new_temp("ptr".to_string());
-       self.context.add_line(format!("{} = load ptr, ptr {}",vtable_ptr_temp.clone(), vtable_ptr_ptr_temp.clone()));
+        let object = node.object.accept(self); 
+
+        let mut curr_object_type = object.ast_type.clone();
+        let function_name = node.member.function_name.clone();
+        let mut curr_type_reg_ptr = object.register.clone();
+
+        while ! self.context.type_functions_ids.contains_key(&(curr_object_type.clone(),function_name.clone())) {
+            let parent_opt = {
+                self.context.inherits.get(&curr_object_type.clone()).cloned()
+            };
+            if let Some(parent) = parent_opt {
+                let parent_ptr_ptr = self.context.new_temp("ptr".to_string());
+                self.context.add_line(format!("{} = getelementptr %{}_type, ptr {}, i32 0, i32 1", parent_ptr_ptr.clone(),curr_object_type.clone(), curr_type_reg_ptr.clone()));
+                let parent_ptr = self.context.new_temp("ptr".to_string());
+                self.context.add_line(format!("{} = load ptr, ptr {}", parent_ptr.clone(), parent_ptr_ptr.clone()));
+                curr_object_type = parent; 
+                curr_type_reg_ptr = parent_ptr.clone();
+            } else {
+                panic!("Method not found.")
+            }
+        }
+
+        //get type vtable ptr instance 
+        let vtable_ptr_ptr_temp = self.context.new_temp("ptr".to_string());
+        self.context.add_line(format!("{} = getelementptr %{}_type, ptr {}, i32 0, i32 0",vtable_ptr_ptr_temp.clone(), curr_object_type.clone(), curr_type_reg_ptr.clone()));
+        let vtable_ptr_temp = self.context.new_temp("ptr".to_string());
+        self.context.add_line(format!("{} = load ptr, ptr {}",vtable_ptr_temp.clone(), vtable_ptr_ptr_temp.clone()));
        
-       let function_index = *self.context.type_members_ids.get(&(object.ast_type.clone(), node.member.function_name.clone())).unwrap();
-       let func_ptr_ptr = self.context.new_temp("ptr".to_string());
-       self.context.add_line(format!("{} = getelementptr %{}_vtable, ptr {}, i32 0 , i32 {}", func_ptr_ptr, object.ast_type.clone(), vtable_ptr_temp, function_index));
-       let func_ptr = self.context.new_temp("ptr".to_string());
-       self.context.add_line(format!("{} = load ptr, ptr {}", func_ptr, func_ptr_ptr));
-       let return_type = node.node_type.clone().unwrap().type_name;
-       let return_llvm = to_llvm_type(return_type.clone());
-       let function_name = self.context.function_member_llvm_names.get(&(object.ast_type.clone(),node.member.function_name.clone())).unwrap().clone();
+        //get function ptr
+        let function_index = *self.context.type_functions_ids.get(&(curr_object_type.clone(), node.member.function_name.clone())).unwrap();
+        let func_ptr_ptr = self.context.new_temp("ptr".to_string());
+        self.context.add_line(format!("{} = getelementptr %{}_vtable, ptr {}, i32 0 , i32 {}", func_ptr_ptr, curr_object_type, vtable_ptr_temp, function_index));
+        let func_ptr = self.context.new_temp("ptr".to_string());
+        self.context.add_line(format!("{} = load ptr, ptr {}", func_ptr, func_ptr_ptr));
+
+       
+        let return_type = node.node_type.clone().unwrap().type_name;
+        let return_llvm = to_llvm_type(return_type.clone());
+        let function_name = self.context.function_member_llvm_names.get(&(curr_object_type.clone(),node.member.function_name.clone())).unwrap().clone();
         let mut llvm_args: Vec<String> = Vec::new();
         for arg in node.member.arguments.iter_mut() {
             let arg_val = arg.accept(self);
@@ -606,7 +635,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
             ));
             llvm_args.push(format!("ptr {}", arg_reg));
         }
-        llvm_args.insert(0, format!("ptr {}", object.register));
+        llvm_args.insert(0, format!("ptr {}", curr_type_reg_ptr.clone()));
         let temp = self.context.new_temp(return_type.clone());
         self.context.add_line(format!(
             "{} = call {} {}({})",

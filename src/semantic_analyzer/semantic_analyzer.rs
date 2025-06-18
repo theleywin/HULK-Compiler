@@ -551,13 +551,13 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
         }
         if let Some(parent_name) = &node.parent {
             if let Some(parent_node) = self.types_tree.get_type(&parent_name) {    
-                if parent_node.params.len() != node.parent_args.len() && !node.parent_args.is_empty() {
+                if parent_node.params.len() != node.parent_args.len() {
                     self.new_error(SemanticError::InvalidTypeArgumentCount(node.parent_args.len(), parent_node.params.len(), parent_node.type_name.clone()));
                 } else {
                     for (index , arg) in node.parent_args.iter_mut().enumerate() {
                         let arg_type = arg.accept(self);
                         if arg_type.type_name != parent_node.params[index].signature {
-                            self.new_error(SemanticError::InvalidTypeArgument("types".to_string() ,arg_type.type_name, parent_node.params[index].name.clone(), index, node.identifier.clone()));
+                            self.new_error(SemanticError::InvalidTypeArgument("types".to_string() ,arg_type.type_name, parent_node.params[index].signature.clone(), index, node.identifier.clone()));
                         }
                     }
                 }
