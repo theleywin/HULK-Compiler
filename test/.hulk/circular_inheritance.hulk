@@ -1,0 +1,11 @@
+type Mujer(esNegra:Boolean) inherits Negra{
+    negra = esNegra;
+
+    get_esNegra():Boolean => self.negra;
+};
+
+type Negra inherits Mujer(true){
+
+};
+
+let a = new Negra() in print(a.get_esNegra());
