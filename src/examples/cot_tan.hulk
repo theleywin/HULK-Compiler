@@ -1,0 +1,4 @@
+function cot(x:Number):Number => 1 / tan(x);
+function tan(x:Number):Number => sin(x) / cos(x);
+
+print(tan(PI)^2 + cot(PI)^2);

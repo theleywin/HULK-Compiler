@@ -1,8 +1,12 @@
+//! Contains the definition of `TypeTree`, a hierarchical representation of types in the language,
+//! along with utilities for inheritance, type checking, and method resolution.
+
 use std::collections::HashMap;
 use crate::ast_nodes::function_def::{FunctionDefNode, FunctionParams};
 
 use super::tree_node::TypeNode;
 
+/// Represents a set of built-in types available in the language.
 pub enum BuiltInTypes {
     Object,
     String,
@@ -12,6 +16,7 @@ pub enum BuiltInTypes {
 }
 
 impl BuiltInTypes {
+    /// Returns the string representation of the built-in type.
     pub fn as_str(&self) -> &str {
         match self {
             BuiltInTypes::Object => "Object",
@@ -23,12 +28,18 @@ impl BuiltInTypes {
     }
 }
 
+/// Represents the tree structure of all types (user-defined and built-in).
+/// 
+/// Each node corresponds to a type and maintains its position in the inheritance hierarchy.
 pub struct TypeTree {
+    /// Root type node (`Object`) from which all others inherit by default.
     pub root: TypeNode,
+    /// A map of all type names to their corresponding `TypeNode`.
     pub nodes: HashMap<String, TypeNode>,
 }
 
 impl TypeTree {
+    /// Creates a new `TypeTree` with built-in types initialized.
     pub fn new() -> Self {
         let mut newtree = TypeTree {
             root: TypeNode::new("Object".to_string(), vec![], 0, None, Vec::new(), HashMap::new(), HashMap::new()),
@@ -42,10 +53,25 @@ impl TypeTree {
         newtree
     }
 
-    pub fn add_type(&mut self, type_name: String, params: Vec<FunctionParams>, parent_name: Option<String>, variables: HashMap<String, Box<String>>, methods: HashMap<String, Box<FunctionDefNode>>) {
+    /// Adds a new type node to the tree.
+    ///
+    /// # Arguments
+    /// * `type_name` - The name of the new type.
+    /// * `params` - Constructor or type parameters.
+    /// * `parent_name` - Optional parent type name (for inheritance).
+    /// * `variables` - Instance variables for the type.
+    /// * `methods` - Methods defined in the type.
+    pub fn add_type(
+        &mut self,
+        type_name: String,
+        params: Vec<FunctionParams>,
+        parent_name: Option<String>,
+        variables: HashMap<String, Box<String>>,
+        methods: HashMap<String, Box<FunctionDefNode>>,
+    ) {
         match &parent_name {
             Some(name) => {
-                if let Some(parent) = self.nodes.get_mut(name) { //Problem here 
+                if let Some(parent) = self.nodes.get_mut(name) {
                     let new_node = TypeNode::new(type_name.clone(), params, 0, Some(name.clone()), Vec::new(), variables, methods);
                     parent.add_child(type_name.clone());
                     self.nodes.insert(type_name.clone(), new_node);
@@ -59,10 +85,12 @@ impl TypeTree {
         }
     }
 
+    /// Retrieves a type node by name.
     pub fn get_type(&self, type_name: &str) -> Option<TypeNode> {
         self.nodes.get(type_name).cloned()
     }
 
+    /// Finds the Lowest Common Ancestor (LCA) of two types in the hierarchy.
     pub fn find_lca(&self, type1: &TypeNode, type2: &TypeNode) -> TypeNode {
         if type1.type_name == type2.type_name {
             return type1.clone();
@@ -100,6 +128,7 @@ impl TypeTree {
         }
     }
 
+    /// Checks if `ancestor` is a true ancestor (direct or indirect) of `descendant`.
     pub fn is_ancestor(&self, ancestor: &TypeNode, descendant: &TypeNode) -> bool {
         let mut current = Some(descendant);
         while let Some(node) = current {
@@ -115,19 +144,29 @@ impl TypeTree {
         false
     }
 
+    /// Detects any cycle in the inheritance graph.
+    ///
+    /// # Returns
+    /// * `Some(type_name)` if a cycle is found starting from that type.
+    /// * `None` if the tree is acyclic.
     pub fn check_cicle(&mut self) -> Option<String> {
         let mut visited = HashMap::new();
-        for (type_name,_) in self.nodes.clone() {
-            if ! visited.contains_key(&type_name) {
+        for (type_name, _) in self.nodes.clone() {
+            if !visited.contains_key(&type_name) {
                 if let Some(cycle_node) = self.check_cicle_helper(type_name, &mut visited) {
-                    return Some(cycle_node)
+                    return Some(cycle_node);
                 }
             }
         }
-        return None;
+        None
     }
 
-    fn check_cicle_helper(&mut self, node_name: String, visited: &mut HashMap<String, bool>) -> Option<String> {
+    /// Helper method for cycle detection using DFS traversal.
+    fn check_cicle_helper(
+        &mut self,
+        node_name: String,
+        visited: &mut HashMap<String, bool>,
+    ) -> Option<String> {
         if visited.contains_key(&node_name) {
             return Some(node_name);
         }
@@ -137,7 +176,7 @@ impl TypeTree {
             let children = node.children.clone();
             for child in &children {
                 if let Some(child_node) = self.nodes.get_mut(child) {
-                    child_node.depth = parent_depth + 1; // Update depth for child nodes
+                    child_node.depth = parent_depth + 1;
                 }
                 if let Some(cycle_node) = self.check_cicle_helper(child.clone(), visited) {
                     return Some(cycle_node);
@@ -148,19 +187,19 @@ impl TypeTree {
         None
     }
 
+    /// Recursively searches for a method named `method_name` in `node_name` and its ancestors.
+    ///
+    /// # Returns
+    /// * `Some(FunctionDefNode)` if found.
+    /// * `None` if not found in the entire ancestry.
     pub fn find_method(&mut self, node_name: String, method_name: String) -> Option<Box<FunctionDefNode>> {
         if let Some(type_node) = self.nodes.get_mut(&node_name) {
             if let Some(method) = type_node.get_method(&method_name) {
                 return Some(method);
-            } else {
-                if let Some(parent) = type_node.parent.clone() {
-                    return self.find_method(parent, method_name);
-                } else {
-                    return None;
-                }  
+            } else if let Some(parent) = type_node.parent.clone() {
+                return self.find_method(parent, method_name);
             }
         }
-        return None;
+        None
     }
-
 }

@@ -4,6 +4,3 @@ pub mod semantic_analyzer;
 pub mod tokens;
 pub mod types_tree;
 pub mod visitor;
-
-#[cfg(test)]
-mod test;

@@ -1,0 +1,28 @@
+function fac(x : Number):Number{
+    if (x==0){
+        1;
+    }
+    else{
+        Mult(x , fac(x-1));
+    };
+};
+
+function Fib(n: Number):Number{
+    if(n<=0){
+        1;
+    }
+    else{
+        Sum(Fib(n-1), Fib(n-2));
+    };
+
+};
+
+function Sum(a:Number, b: Number): Number => a + b;
+function Mult(a:Number, b: Number): Number => a * b;
+
+
+
+print("Factorial de 5 es :");
+print(fac(5));
+print("Fibonacci en 5 es :");
+print(Fib(5));

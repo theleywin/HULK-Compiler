@@ -1,0 +1,8 @@
+print(sin(30));
+print(cos(60));
+print(sqrt(4));
+print(sqrt(100));
+print(log10(100));
+print(log(2,32));
+print(exp(1));
+print(exp(2));
