@@ -187,6 +187,12 @@ impl SemanticAnalyzer {
                                 type_def.span.clone(),
                             ));
                         }
+                        if ! self.context.declared_types.contains_key(parent_type) {
+                            self.new_error(SemanticError::UnknownError(
+                                format!("Type {} is not defined yet in this scope. Base types must be declared before any types inheriting from them",parent_type),
+                                type_def.span.clone(),
+                            ));
+                        }
                         self.context
                             .declared_types
                             .insert(type_def.identifier.clone(), *type_def.clone());
@@ -954,7 +960,11 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
             } else {
                 for (index, arg) in node.arguments.iter_mut().enumerate() {
                     let arg_type = arg.accept(self);
-                    if arg_type.type_name != type_node.params[index].signature {
+                    let arg_type_node = self.types_tree.get_type(&arg_type.type_name);
+                    let param_type_node = self.types_tree.get_type(&type_node.params[index].signature);
+                    if !(arg_type_node.is_some() && param_type_node.is_some() 
+                        && self.types_tree.is_ancestor(param_type_node.as_ref().unwrap(),arg_type_node.as_ref().unwrap()))
+                    {
                         self.new_error(SemanticError::InvalidTypeArgument(
                             "types".to_string(),
                             arg_type.type_name,
@@ -997,7 +1007,11 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
             } else {
                 for (index, arg) in node.member.arguments.iter_mut().enumerate() {
                     let arg_type = arg.accept(self);
-                    if arg_type.type_name != func.params[index].signature {
+                    let arg_type_node = self.types_tree.get_type(&arg_type.type_name);
+                    let param_type_node = self.types_tree.get_type(&func.params[index].signature.clone());
+                    if ! (arg_type_node.is_some() && param_type_node.is_some() 
+                        && self.types_tree.is_ancestor(param_type_node.as_ref().unwrap(),arg_type_node.as_ref().unwrap()))
+                    {
                         self.new_error(SemanticError::InvalidTypeArgument(
                             "function".to_string(),
                             arg_type.type_name,
