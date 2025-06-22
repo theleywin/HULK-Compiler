@@ -526,14 +526,13 @@ impl Visitor<GeneratorResult> for CodeGenerator {
     fn visit_type_def(&mut self, node: &mut TypeDefNode) -> GeneratorResult {
         let type_name = node.identifier.clone();
         let mut props_types = Vec::new();
-        for member in node.members.iter() {
-            match member {
-                TypeMember::Property(assignment) => {
-                    props_types.push(to_llvm_type(assignment.node_type.clone().unwrap().type_name))
-                }
-                _ => continue
+
+        if let Some(props_list) = self.context.types_members.get(&type_name) {
+            for (_prop_name, prop_type) in props_list {
+                props_types.push(to_llvm_type(prop_type.clone()));
             }
-        }
+        } 
+
         let list_props_str = props_types
             .iter()
             .map(|llvm_name| format!("{}", llvm_name))
@@ -541,9 +540,9 @@ impl Visitor<GeneratorResult> for CodeGenerator {
             .join(", ");
         // type (vtable , parent , props...)
         if props_types.len() > 0 {
-            self.context.add_line(format!("%{}_type = type {{ ptr, ptr, {} }}", type_name.clone(), list_props_str)); 
+            self.context.add_line(format!("%{}_type = type {{ i32, ptr, {} }}", type_name.clone(), list_props_str)); 
         } else {
-            self.context.add_line(format!("%{}_type = type {{ ptr, ptr }}", type_name.clone())); 
+            self.context.add_line(format!("%{}_type = type {{ i32, ptr }}", type_name.clone())); 
         }
         self.generate_type_table(node);
         self.generate_type_constructor(node);
@@ -581,7 +580,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
             "{} = call ptr {}({})",
             result.clone(), type_constructor, args_str
         ));
-        GeneratorResult::new(result.clone(), format!("%{}_type",node.type_name.clone()),node.type_name.clone())
+        GeneratorResult::new(result.clone(), "ptr".to_string(),node.type_name.clone())
     }
 
     fn visit_type_function_access(&mut self, node: &mut TypeFunctionAccessNode) -> GeneratorResult {
@@ -607,23 +606,16 @@ impl Visitor<GeneratorResult> for CodeGenerator {
             }
         }
 
-        //get type vtable ptr instance 
-        let vtable_ptr_ptr_temp = self.context.new_temp("ptr".to_string());
-        self.context.add_line(format!("{} = getelementptr %{}_type, ptr {}, i32 0, i32 0",vtable_ptr_ptr_temp.clone(), curr_object_type.clone(), curr_type_reg_ptr.clone()));
-        let vtable_ptr_temp = self.context.new_temp("ptr".to_string());
-        self.context.add_line(format!("{} = load ptr, ptr {}",vtable_ptr_temp.clone(), vtable_ptr_ptr_temp.clone()));
-       
-        //get function ptr
         let function_index = *self.context.type_functions_ids.get(&(curr_object_type.clone(), node.member.function_name.clone())).unwrap();
-        let func_ptr_ptr = self.context.new_temp("ptr".to_string());
-        self.context.add_line(format!("{} = getelementptr %{}_vtable, ptr {}, i32 0 , i32 {}", func_ptr_ptr, curr_object_type, vtable_ptr_temp, function_index));
+        let type_id_ptr = self.context.new_temp("ptr".to_string());
+        self.context.add_line(format!("{} = getelementptr %{}_type, ptr {}, i32 0, i32 0", type_id_ptr, curr_object_type.clone(), curr_type_reg_ptr.clone()));
+        let type_id = self.context.new_temp("i32".to_string());
+        self.context.add_line(format!("{} = load i32, ptr {}", type_id, type_id_ptr));
         let func_ptr = self.context.new_temp("ptr".to_string());
-        self.context.add_line(format!("{} = load ptr, ptr {}", func_ptr, func_ptr_ptr));
-
-       
+        self.context.add_line(format!("{} = call ptr @get_vtable_method(i32 {},i32 {})", func_ptr, type_id, function_index));
+        
         let return_type = node.node_type.clone().unwrap().type_name;
         let return_llvm = to_llvm_type(return_type.clone());
-        let function_name = self.context.function_member_llvm_names.get(&(curr_object_type.clone(),node.member.function_name.clone())).unwrap().clone();
         let mut llvm_args: Vec<String> = Vec::new();
         for arg in node.member.arguments.iter_mut() {
             let arg_val = arg.accept(self);
@@ -639,7 +631,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
         let temp = self.context.new_temp(return_type.clone());
         self.context.add_line(format!(
             "{} = call {} {}({})",
-            temp.clone(), return_llvm, function_name, llvm_args.join(", ")
+            temp.clone(), return_llvm, func_ptr, llvm_args.join(", ")
         ));
         GeneratorResult::new(temp, to_llvm_type(node.member.node_type.clone().unwrap().type_name), node.member.node_type.clone().unwrap().type_name)
     }

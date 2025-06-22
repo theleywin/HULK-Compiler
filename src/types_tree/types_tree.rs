@@ -68,7 +68,15 @@ impl TypeTree {
             return type1.clone();
         }
         if type1.depth < type2.depth {
-            return self.find_lca(type1, type2);
+            if let Some(ref parent2) = type2.parent {
+                if let Some(ref parent2_node) = self.nodes.get(parent2) {
+                    return self.find_lca(type1, parent2_node);
+                } else {
+                    return self.root.clone();
+                }
+            } else {
+                return self.root.clone();
+            }
         } else if type2.depth < type1.depth {
             if let Some(ref parent1) = type1.parent {
                 if let Some(ref parent1_node) = self.nodes.get(parent1) {

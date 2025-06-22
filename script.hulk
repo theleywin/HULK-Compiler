@@ -1,28 +1,44 @@
-print("Ejemplo de Herencia con types Animal -> Mamifero -> Perro");
-type Animal (age: Number) {
-     age = age;
-
-     getAge(): Number => self.age ;
-     setAge(age:Number): Number => self.age := age;
+type Animal (name: String, age: Number) {
+     name = name ;
+     age = age ;
+     getName(): String => self.name;
+     getAge(): Number => self.age;
+     make_sound(): String => "animal sound";
 };
 
-type Mamifero (tienePelo :Boolean , age: Number) inherits Animal(age) {
-     tienePelo = tienePelo;
-
-     getPelo() : Boolean => self.tienePelo;
-} ;
-
-type Perro(raza: String , age: Number) inherits Mamifero(true , age) {
-     raza = raza;
-
-     getRaza() : String => self.raza;
+type Dog (name: String , age: Number) inherits Animal(name,age) {
+     make_sound(): String => "Wof Wof!";
 };
 
+type Cat (name:String, age: Number) inherits Animal(name,age) {
+     x = "prop";
+     make_sound(): String => "Meow Meow!";
+     getX(): String => self.x;
+};
 
-let champion = new Perro("pastor", 5) in {
-     print(champion.getAge());
-     print(champion.setAge(6));
-     print(champion.getAge());
-}; 
+type Dinosour(name: String, age:Number) inherits Animal(name,age){
+    
+};
 
-print(sqrt(25));
+function getPet(selector: Number,name:String,age:Number): Animal {
+     if ( selector == 1) {
+          new Dog(name,age);
+     } elif (selector == 2) {
+          new Cat(name,age);
+     } else {
+          new Dinosour(name,age);
+     };
+};
+
+let p = getPet(2,"Jossue",22) in {
+     print(p.make_sound());
+     print(p.getName());
+     print(p.getAge());
+};
+
+let g = new Cat("KAMILA",21) in {
+     print(g.getX());
+};
+
+let a = sin(60) in print(a);
+

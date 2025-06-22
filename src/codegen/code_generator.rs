@@ -59,17 +59,23 @@ impl CodeGenerator {
 
     fn get_definitions(&mut self, program: &mut Program) -> Vec<String> {
         let definitions ;
+        self.context.add_line(format!("%VTableType = type [ {} x ptr ]", self.context.max_functions));
+        let vtable_declarations: Vec<String> = self.context.types_vtables.iter()
+            .map(|vtable| format!("ptr {}", vtable))
+            .collect();
+        self.context.add_line(format!("@super_vtable = global [{} x ptr] [{}]", self.context.count_types, vtable_declarations.join(", ")));
+        self.generate_get_vtable_method();
         for statement in &mut program.statements {
             match statement {
                 Statement::StatementTypeDef(_) => {
                     statement.accept(self);
                 }
                 Statement::StatementFunctionDef(_) => {
-                    statement.accept(self);
+                    statement.accept(self); 
                 }
                 _ => continue,
             }
-        }
+        } 
         definitions = self.context.code.clone();
         self.context.code.clear();
         definitions 
