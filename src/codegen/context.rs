@@ -8,20 +8,35 @@ pub enum Type {
 }
 
 pub struct CodeGenContext {
+    // Vector of strings representing the generated code
     pub code: Vec<String>,
+    // Global variables, used to store global state
     pub globals: Vec<String>,
+    // Set of global constants, used to avoid re-declaring them
     pub global_constants: HashSet<String>,
+    // String constants used in the code, stored as a vector of strings
     pub str_constants: Vec<String>,
+    // Counter for string constants, used to generate unique names
     pub str_counter: usize,
+    // Counter for temporary variables, used to generate unique names
     pub temp_counter: usize,
+    // Unique ID for the context, used to differentiate between different contexts
     pub id: usize,
+    // Current scope ID, used to differentiate between variables in different scopes
     scope_id: i32,
+    // Temporary variables, mapping temporary names to types
     pub temp_types: HashMap<String, String>,
+    // String literals used in the code, mapping literal value to unique name
     pub string_literals: HashMap<String, String>,
+    // Next string literal ID, used for unique naming of string constants
     pub next_string_id: usize,
+    // Set of runtime functions that are used in the code
     pub runtime_functions: HashSet<String>,
+    // Variables in the current scope, mapping variable names to types
     pub variables: HashMap<String, String>,
+    // Scopes stack, each scope is a HashMap of variable names to types
     pub scopes: Vec<HashMap<String, String>>,
+    // (type, function_name) -> function_llvm_name
     pub function_member_llvm_names: HashMap<(String, String), String>,
     // (type) -> type_parent
     pub inherits: HashMap<String, String>,
@@ -35,7 +50,20 @@ pub struct CodeGenContext {
     pub type_members_ids: HashMap<(String, String), i32>,
     // (type, member) -> function_index_on_v_table
     pub type_functions_ids: HashMap<(String,String),i32>,
+    // Current self type, used for methods
     pub current_self: Option<String>,
+    // Maximum number of functions in a type's vtable
+    pub max_functions: i32,
+    // Count of types defined
+    pub count_types: i32,
+    // (type_name) -> type_id
+    pub type_id: HashMap<String, i32>,
+    // VTable for each type, used for dynamic dispatch
+    pub types_vtables: Vec<String>,
+    // (type) -> [(function_name, function_llvm_name)]
+    pub types_functions: HashMap<String, Vec<(String,String)>>,
+    // (type) -> [(member_name,member_type)]
+    pub types_members: HashMap<String, Vec<(String,String)>>,
 }
 
 #[derive(Clone)]
@@ -68,8 +96,13 @@ impl Default for CodeGenContext {
             type_members_types: HashMap::new(),
             type_members_ids: HashMap::new(),
             type_functions_ids: HashMap::new(),
-            current_self: None
-
+            current_self: None,
+            max_functions: 0,
+            count_types: 0,
+            type_id: HashMap::new(),
+            types_vtables: Vec::new(),
+            types_functions: HashMap::new(),
+            types_members: HashMap::new(),
         }
     }
 }

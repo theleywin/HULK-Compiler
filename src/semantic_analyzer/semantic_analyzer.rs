@@ -82,8 +82,8 @@ impl SemanticAnalyzer {
     /// Returns Ok(()) if no errors found, or Err with the list of semantic errors.
     pub fn analyze(&mut self, node: &mut Program) -> Result<(), Vec<SemanticError>> {
         self.get_types_definitions(node);
-        self.get_functions_names_and_signatures(node);
         self.build_types();
+        self.get_functions_names_and_signatures(node);
         for statement in &mut node.statements {
             statement.accept(self);
         }
@@ -571,7 +571,11 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                 ));
             } else {
                 for (index, arg) in arg_types.iter_mut().enumerate() {
-                    if arg.type_name != arguments_types[index].1 {
+                    let func_arg_type_node = self.types_tree.get_type(&arguments_types[index].1);
+                    let arg_type_node = self.types_tree.get_type(&arg.type_name);
+                    if !(func_arg_type_node.is_some() && arg_type_node.is_some()
+                        && self.types_tree.is_ancestor(func_arg_type_node.as_ref().unwrap(), arg_type_node.as_ref().unwrap()))
+                    {
                         self.new_error(SemanticError::InvalidTypeArgument(
                             "function".to_string(),
                             arg.type_name.clone(),
@@ -796,8 +800,9 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
             ));
         }
         let if_expr_type = node.if_expression.accept(self);
-        let result = if_expr_type.clone();
-        for (condition, body_expr) in node.elifs.iter_mut() {
+        let mut result = if_expr_type.clone();
+        for (condition , body_expr) in node.elifs.iter_mut() {
+
             let expr_type = body_expr.accept(self);
             if let Some(cond) = condition {
                 let cond_type = cond.accept(self);
@@ -809,10 +814,15 @@ impl Visitor<TypeNode> for SemanticAnalyzer {
                 }
             }
             if result != expr_type {
-                self.new_error(SemanticError::UnknownError(
-                    "Incompatible types in if-else branches".to_string(),
-                    node.span.clone(),
-                ));
+                let lca = self.types_tree.find_lca(&result, &expr_type);
+                if lca.type_name == "Unknown" || lca.type_name == "Object" {
+                    // TODO añadir error más específico para este error
+                    self.new_error(SemanticError::UnknownError(
+                        "Incompatible types in if-else branches".to_string(),
+                        node.span.clone(),
+                    ));
+                }
+                result = lca ;
             }
         }
         node.set_type(result.clone());
