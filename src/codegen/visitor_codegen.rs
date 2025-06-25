@@ -525,26 +525,7 @@ impl Visitor<GeneratorResult> for CodeGenerator {
 
     fn visit_type_def(&mut self, node: &mut TypeDefNode) -> GeneratorResult {
         let type_name = node.identifier.clone();
-        let mut props_types = Vec::new();
 
-        if let Some(props_list) = self.context.types_members.get(&type_name) {
-            for (_prop_name, prop_type) in props_list {
-                props_types.push(to_llvm_type(prop_type.clone()));
-            }
-        } 
-
-        let list_props_str = props_types
-            .iter()
-            .map(|llvm_name| format!("{}", llvm_name))
-            .collect::<Vec<_>>()
-            .join(", ");
-        // type (vtable , parent , props...)
-        if props_types.len() > 0 {
-            self.context.add_line(format!("%{}_type = type {{ i32, ptr, {} }}", type_name.clone(), list_props_str)); 
-        } else {
-            self.context.add_line(format!("%{}_type = type {{ i32, ptr }}", type_name.clone())); 
-        }
-        self.generate_type_table(node);
         self.generate_type_constructor(node);
         self.context.current_self = Some(node.identifier.clone());
         for member in node.members.iter_mut() {

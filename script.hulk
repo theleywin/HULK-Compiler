@@ -1,1 +1,59 @@
-print( "Welcome !");
+type Dog (name: String , age: Number) inherits Animal(name,age) {
+     make_sound(): String => "Wof Wof!";
+};
+
+type Cat (name:String, age: Number) inherits Animal(name,age) {
+     make_sound(): String => "Meow Meow!";
+};
+
+type Dinosour(name: String, age:Number) inherits Animal(name,age){
+     make_sound(): String => "Row Row!";
+};
+
+type Animal (name: String, age: Number) {
+     name = name ;
+     age = age ;
+     getName(): String => self.name;
+     getAge(): Number => self.age;
+     make_sound(): String => "animal sound";
+};
+
+function getPet(selector: Number,name:String,age:Number): Animal {
+     if ( selector == 1) {
+          new Dog(name,age);
+     } elif (selector == 2) {
+          new Cat(name,age);
+     } else {
+          new Dinosour(name,age);
+     };
+};
+
+type SuperPet(pet: Animal) inherits Dog(pet.getName(),pet.getAge()) {
+     pet = pet;
+     fly() : String => "I can Fly";
+     showPetName(p: Animal) : String => p.getName();
+     showMyName() : String => self.pet.getName();
+};
+
+function printPetInfo(pet: Animal): String {
+     print("Pet info:");
+     print(pet.getAge());
+     print(pet.getName());
+};
+
+let p = getPet(2,"Jossue",22) in {
+     print(p.make_sound());
+     print(p.getAge());
+     print(p.getName());
+};
+
+let s = new SuperPet(new Cat("lol",33)), c = new Cat("j",5) in {
+     print(s.fly());
+     print(s.showPetName(s));
+     print(s.showMyName());
+};
+
+let a = new Dinosour("julian",403) in {
+     printPetInfo(a);
+};
+
