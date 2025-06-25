@@ -187,12 +187,6 @@ impl SemanticAnalyzer {
                                 type_def.span.clone(),
                             ));
                         }
-                        if ! self.context.declared_types.contains_key(parent_type) {
-                            self.new_error(SemanticError::UnknownError(
-                                format!("Type {} is not defined yet in this scope. Base types must be declared before any types inheriting from them",parent_type),
-                                type_def.span.clone(),
-                            ));
-                        }
                         self.context
                             .declared_types
                             .insert(type_def.identifier.clone(), *type_def.clone());
