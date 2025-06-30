@@ -1,18 +1,13 @@
-use lalrpop_util::lalrpop_mod;
-
-lalrpop_mod!(parser);
-
-pub use parser::RegexParser;
-
-pub mod ast;
+// Main modules
+pub mod core;
 pub mod automata;
-pub mod lexer;
+pub mod regex;
 
 #[cfg(test)]
-pub mod test {
-    pub mod test_char_match;
-    pub mod test_expression;
-    pub mod test_parsing;
-    pub mod test_nfa;
-    pub mod test_lexer;
-}
+pub mod tests;
+
+// Re-export main public API
+pub use core::{Lexer, Rule, LexerChunk, Token, LexerResult};
+pub use regex::{DFAMatcher, NFAMatcher};
+pub use regex::parser::RegexParser;
+pub use automata::{NFA, DFA, NFABuilder, SuperNFA, SuperDFA};

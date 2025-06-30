@@ -1,17 +1,13 @@
-pub mod bob_construye_nfa;
-pub mod nfa;
-pub mod ndt;
-pub mod lexeme;
-pub mod lexer_nfa;
-pub mod tracker;
-pub mod utils;
-pub mod lexer_dfa;
+/// Automata module
+/// 
+/// This module contains all automata-related functionality, including
+/// basic finite automata, extended super automata for lexing, and utilities.
 
-pub use bob_construye_nfa::NfaBuild;
-pub use nfa::NFA;
-pub use ndt::NDT;   
-pub use lexeme::Lexeme;
-pub use lexer_nfa::LexerNFA;
-pub use tracker::VisitTracker;
-pub use utils::{to_set, to_str};
-pub use lexer_dfa::LexerDFA;
+pub mod finite_automata;
+pub mod super_automata;
+pub mod utils;
+
+// Re-export commonly used types for convenience
+pub use finite_automata::{nfa::NFA, dfa::DFA, nfa_builder::NFABuilder};
+pub use super_automata::{super_nfa::SuperNFA, super_dfa::SuperDFA};
+pub use utils::{transitionable::NDTransitionable, marked_queue::MarkedQueue};
