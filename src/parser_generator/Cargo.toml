@@ -1,0 +1,13 @@
+[package]
+name = "parser_generator"
+version = "0.1.0"
+edition = "2024"
+
+[dev-dependencies]
+lexer_generator = { path = "../lexer_generator" }
+
+[dependencies]
+error_handler = { path = "../error_handler" }
+
+[features]
+debug-utils = []
