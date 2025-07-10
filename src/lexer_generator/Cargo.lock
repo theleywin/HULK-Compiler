@@ -199,7 +199,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "lexer"
+name = "lexer_generator"
 version = "0.1.0"
 dependencies = [
  "error_handler",
