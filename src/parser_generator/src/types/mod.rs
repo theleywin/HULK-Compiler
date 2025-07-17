@@ -4,6 +4,9 @@ pub use symbol::SymbolId;
 pub(crate) use symbol::TerminalCompute;
 pub use symbol::TerminalId;
 
+mod action;
+pub use action::Action;
+
 mod production;
 pub(crate) use production::Production;
 pub(crate) use production::ProductionCompute;
