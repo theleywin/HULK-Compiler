@@ -4,9 +4,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    StateId, SymbolId, TerminalId,
+    StateId, SymbolId, TerminalId, Action,
     debugging_helpers::{get_name_or_default, get_production_string},
-    parser::Action,
     table_builder::{
         TableBuilder,
         items::{LR0Item, LR1Item, LR1ItemSetBuilder},
